@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "TIR",
+    "III",
+    "RIT"
+  ],
+  "key": {
+    "T": { "item": "minecraft:redstone_torch" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "R": { "item": "minecraft:redstone" }
+  },
+  "result": {
+    "item": "gregicalityutils:analog_emitter",
+    "count": 1
+  }
+}

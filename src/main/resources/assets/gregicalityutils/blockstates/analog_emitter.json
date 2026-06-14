@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down":  { "model": "gregicalityutils:analog_emitter", "x": 90 },
+    "facing=up":    { "model": "gregicalityutils:analog_emitter", "x": -90 },
+    "facing=north": { "model": "gregicalityutils:analog_emitter" },
+    "facing=south": { "model": "gregicalityutils:analog_emitter", "y": 180 },
+    "facing=west":  { "model": "gregicalityutils:analog_emitter", "y": 270 },
+    "facing=east":  { "model": "gregicalityutils:analog_emitter", "y": 90 }
+  }
+}

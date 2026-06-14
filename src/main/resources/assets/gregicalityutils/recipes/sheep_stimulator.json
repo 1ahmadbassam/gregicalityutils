@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "WRW",
+    "PGP",
+    "PPP"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:wheat"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "P": {
+      "type": "forge:ore_dict",
+      "ore": "plateIron"
+    },
+    "G": {
+      "type": "forge:ore_dict",
+      "ore": "gearBronze"
+    }
+  },
+  "result": {
+    "item": "gregicalityutils:sheep_stimulator",
+    "count": 1
+  }
+}

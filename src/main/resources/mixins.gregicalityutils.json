@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "top.ahmadb.gregicalityutils.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "mixins.gregicalityutils.refmap.json",
+  "mixins": [
+    "progressiveautomation.MixinToolHelper",
+    "gregicadditions.MixinSteamSieve",
+    "gregicadditions.MixinMetaTileEntitySieve",
+    "gregtech.MixinItemSourceList",
+    "gregtech.MixinMetaTileEntityWorkbench",
+    "gregtech.MixinMetaTileEntityWorkbenchAccessor"
+  ],
+  "client": [],
+  "server": []
+}

@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "particle": "gregicalityutils:blocks/analog_emitter_side",
+    "down": "gregicalityutils:blocks/analog_emitter_side",
+    "up": "gregicalityutils:blocks/analog_emitter_side",
+    "north": "gregicalityutils:blocks/analog_emitter_front",
+    "south": "gregicalityutils:blocks/analog_emitter_side",
+    "west": "gregicalityutils:blocks/analog_emitter_side",
+    "east": "gregicalityutils:blocks/analog_emitter_side"
+  }
+}
