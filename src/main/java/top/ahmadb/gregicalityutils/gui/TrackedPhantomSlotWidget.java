@@ -1,19 +1,26 @@
 package top.ahmadb.gregicalityutils.gui;
 
 import gregtech.api.gui.widgets.PhantomSlotWidget;
+import gregtech.api.items.toolitem.ToolMetaItem;
 import gregtech.api.util.ItemStackKey;
 import gregtech.common.inventory.IItemInfo;
 import gregtech.common.metatileentities.storage.CraftingRecipeResolver;
 import gregtech.common.metatileentities.storage.MetaTileEntityWorkbench;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.oredict.OreDictionary;
 import top.ahmadb.gregicalityutils.mixin.gregtech.MixinMetaTileEntityWorkbenchAccessor;
 
 public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
@@ -24,9 +31,9 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
     private final int slotY;
     private final int slotIndex;
 
-    // Native UI Sync Variables
-    private int lastAvailable = -1;  // Server-side tracking
-    private int clientAvailable = 0; // Client-side drawing
+    private int lastAvailable = -1;
+    private ItemStack lastActualItem = ItemStack.EMPTY;
+    private int clientAvailable = 0; 
 
     public TrackedPhantomSlotWidget(IItemHandlerModifiable itemHandler, int slotIndex, int xPosition, int yPosition, MetaTileEntityWorkbench workbench) {
         super(itemHandler, slotIndex, xPosition, yPosition);
@@ -37,31 +44,104 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
         this.slotIndex = slotIndex;
     }
 
+    // --- OREDICT & EQUIVALENCE CHECKER ---
+    private boolean isItemEquivalent(ItemStack blueprint, ItemStack target) {
+        if (blueprint.isEmpty() || target.isEmpty()) return false;
+        
+        // 1. Direct Match or Wildcard Match
+        if (OreDictionary.itemMatches(blueprint, target, false)) return true;
+
+        // 2. OreDictionary Tag Match (e.g., both are "ingotCopper")
+        int[] blueprintIDs = OreDictionary.getOreIDs(blueprint);
+        int[] targetIDs = OreDictionary.getOreIDs(target);
+
+        for (int id1 : blueprintIDs) {
+            for (int id2 : targetIDs) {
+                if (id1 == id2) return true;
+            }
+        }
+        return false;
+    }
+
+    // --- MANUAL TOOL SCANNER ---
+    private int countInHandler(IItemHandler handler, ItemStack blueprint, boolean isGTTool, boolean isDamageable) {
+        if (handler == null) return 0;
+        int count = 0;
+        for (int i = 0; i < handler.getSlots(); i++) {
+            ItemStack stack = handler.getStackInSlot(i);
+            if (!stack.isEmpty()) {
+                if (isGTTool) {
+                    if (stack.getItem() == blueprint.getItem() && stack.getMetadata() == blueprint.getMetadata()) count += stack.getCount();
+                } else if (isDamageable) {
+                    if (stack.getItem() == blueprint.getItem()) count += stack.getCount();
+                }
+            }
+        }
+        return count;
+    }
+
+    private int countToolInNetwork(ItemStack blueprint, boolean isGTTool, boolean isDamageable) {
+        int count = 0;
+        MixinMetaTileEntityWorkbenchAccessor accessor = (MixinMetaTileEntityWorkbenchAccessor) this.workbench;
+        
+        count += countInHandler(accessor.getInternalInventory(), blueprint, isGTTool, isDamageable);
+        count += countInHandler(accessor.getToolInventory(), blueprint, isGTTool, isDamageable);
+        
+        World world = this.workbench.getWorld();
+        BlockPos pos = this.workbench.getPos();
+        
+        for (EnumFacing side : EnumFacing.VALUES) {
+            TileEntity te = world.getTileEntity(pos.offset(side));
+            if (te != null && te.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side.getOpposite())) {
+                count += countInHandler(te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, side.getOpposite()), blueprint, isGTTool, isDamageable);
+            }
+        }
+        return count;
+    }
+
     // --- SERVER SIDE: Detect changes and push to client ---
     @Override
     public void detectAndSendChanges() {
         super.detectAndSendChanges();
-        
+
         if (this.workbench != null && !this.workbench.getWorld().isRemote) {
             CraftingRecipeResolver resolver = ((MixinMetaTileEntityWorkbenchAccessor) this.workbench).invokeGetRecipeResolver();
-            
+
             if (resolver != null) {
                 ItemStack stackInSlot = this.gridHandler.getStackInSlot(this.slotIndex);
                 int currentAvailable = 0;
-                
+                ItemStack actualItemInNetwork = ItemStack.EMPTY;
+
                 if (!stackInSlot.isEmpty()) {
-                    IItemInfo info = resolver.getItemSourceList().getItemInfo(new ItemStackKey(stackInSlot));
-                    currentAvailable = (info != null) ? info.getTotalItemAmount() : 0;
+                    // Scan the entire storage network for ANY item that is OreDict-equivalent to the blueprint
+                    for (ItemStackKey storedKey : resolver.getItemSourceList().getStoredItems()) {
+                        ItemStack storedStack = storedKey.getItemStack();
+
+                        if (isItemEquivalent(stackInSlot, storedStack)) {
+                            IItemInfo info = resolver.getItemSourceList().getItemInfo(storedKey);
+                            if (info != null && info.getTotalItemAmount() > 0) {
+                                currentAvailable += info.getTotalItemAmount();
+                                
+                                // Capture the FIRST real, valid item we find in the network to show to the player!
+                                if (actualItemInNetwork.isEmpty()) {
+                                    actualItemInNetwork = storedStack.copy();
+                                }
+                            }
+                        }
+                    }
                 }
-                
-                // FIX: Capture the value in a 'final' variable for the Java 8 lambda
+
                 final int amountToSend = currentAvailable;
-                
-                // If the number changed, let the ModularUI framework handle sending the packet!
-                if (amountToSend != this.lastAvailable) {
+                final ItemStack itemToSend = actualItemInNetwork;
+
+                // Send a UI packet if the amount changed, OR if the actual item texture/damage changed!
+                if (amountToSend != this.lastAvailable || !ItemStack.areItemStacksEqual(itemToSend, this.lastActualItem)) {
                     this.lastAvailable = amountToSend;
-                    // Widget Update ID 777 uniquely identifies this specific data payload
-                    writeUpdateInfo(777, buf -> buf.writeInt(amountToSend)); 
+                    this.lastActualItem = itemToSend.copy();
+
+                    writeUpdateInfo(777, buf -> {
+                        buf.writeInt(amountToSend);
+                    });
                 }
             }
         }
@@ -85,17 +165,26 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
         ItemStack stackInSlot = this.gridHandler.getStackInSlot(this.slotIndex);
 
         if (!stackInSlot.isEmpty() && workbench != null) {
-            // Calculate Demand (Client already knows the grid contents)
-            int totalRequired = 0;
-            for (int i = 0; i < this.gridHandler.getSlots(); i++) {
+            boolean isGTTool = stackInSlot.getItem() instanceof ToolMetaItem;
+            boolean isDamageable = stackInSlot.isItemStackDamageable();
+
+            // Calculate Demand using OreDict Equivalence
+            int demandUpToThisSlot = 0;
+            for (int i = 0; i <= this.slotIndex; i++) {
                 ItemStack gridStack = this.gridHandler.getStackInSlot(i);
-                if (!gridStack.isEmpty() && Item.getIdFromItem(gridStack.getItem()) == Item.getIdFromItem(stackInSlot.getItem()) && gridStack.getMetadata() == stackInSlot.getMetadata()) {
-                    totalRequired++;
+                if (!gridStack.isEmpty()) {
+                    if (isGTTool) {
+                        if (gridStack.getItem() == stackInSlot.getItem() && gridStack.getMetadata() == stackInSlot.getMetadata()) demandUpToThisSlot++;
+                    } else if (isDamageable) {
+                        if (gridStack.getItem() == stackInSlot.getItem()) demandUpToThisSlot++;
+                    } else {
+                        if (isItemEquivalent(stackInSlot, gridStack)) demandUpToThisSlot++;
+                    }
                 }
             }
 
-            // If we lack the items, render the visuals
-            if (this.clientAvailable < totalRequired) {
+            // If the supply ran out before fulfilling this slot, tint it red.
+            if (this.clientAvailable < demandUpToThisSlot) {
                 GuiScreen screen = Minecraft.getMinecraft().currentScreen;
                 int renderX = this.slotX;
                 int renderY = this.slotY;
@@ -113,20 +202,7 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
                 GlStateManager.colorMask(true, true, true, false);
                 Gui.drawRect(renderX, renderY, renderX + 17, renderY + 17, 0x66FF0000);
                 GlStateManager.colorMask(true, true, true, true);
-
-                // Render Number
-                FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-                String text = String.valueOf(this.clientAvailable);
-
-                GlStateManager.pushMatrix();
-                GlStateManager.translate(0, 0, 300);
-
-                int textX = renderX + 18 - font.getStringWidth(text);
-                int textY = renderY + 9;
-                font.drawStringWithShadow(text, textX, textY, 0xFF5555);
-
-                GlStateManager.popMatrix();
-
+                
                 GlStateManager.enableLighting();
                 GlStateManager.enableDepth();
             }

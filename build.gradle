@@ -152,6 +152,9 @@ dependencies {
     implementation rfg.deobf("curse.maven:gregtech-ce-293327:3478805")
     implementation rfg.deobf("curse.maven:gregicality-364851:3642665")
     implementation rfg.deobf("curse.maven:jei-238222:5846804")
+    implementation rfg.deobf("curse.maven:extrautils2-225561:2678374")
+    implementation rfg.deobf("curse.maven:opencomputers-223008:6608365")
+    implementation rfg.deobf("curse.maven:gtce2oc-304485:3109652")
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'

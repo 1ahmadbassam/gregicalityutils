@@ -8,9 +8,14 @@
     "progressiveautomation.MixinToolHelper",
     "gregicadditions.MixinSteamSieve",
     "gregicadditions.MixinMetaTileEntitySieve",
+    "gregicadditions.MixinMetaTileEntityRockBreaker",
+    "gregicadditions.MixinSteamRockBreaker",
     "gregtech.MixinItemSourceList",
     "gregtech.MixinMetaTileEntityWorkbench",
-    "gregtech.MixinMetaTileEntityWorkbenchAccessor"
+    "gregtech.MixinMetaTileEntityWorkbenchAccessor",
+    "gtce2oc.MixinMachineObject",
+    "gtce2oc.MixinTileEntityGTCEBridge",
+    "extrautils2.MixinTileMine"
   ],
   "client": [],
   "server": []

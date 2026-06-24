@@ -22,11 +22,9 @@ public class TileEntityAnalogEmitter extends TileEntity {
         if (this.world != null && !this.world.isRemote) {
             IBlockState state = this.world.getBlockState(this.pos);
             this.world.notifyNeighborsOfStateChange(this.pos, state.getBlock(), false);
+            // Force the server to send the updated NBT to the client
+            this.world.notifyBlockUpdate(this.pos, state, state, 3);
         }
-    }
-
-    public boolean isPowered() {
-        return isPowered;
     }
 
     public void setPowered(boolean powered) {
@@ -34,12 +32,16 @@ public class TileEntityAnalogEmitter extends TileEntity {
             this.isPowered = powered;
             this.markDirty();
             
-            // When power state changes, force the block to update its outputs
             if (this.world != null && !this.world.isRemote) {
                 IBlockState state = this.world.getBlockState(this.pos);
                 this.world.notifyNeighborsOfStateChange(this.pos, state.getBlock(), false);
+                // Force the server to send the updated NBT to the client
+                this.world.notifyBlockUpdate(this.pos, state, state, 3);
             }
         }
+    }
+    public boolean isPowered() {
+        return isPowered;
     }
 
     @Override
