@@ -149,12 +149,18 @@ dependencies {
     }
     implementation rfg.deobf("curse.maven:progressive-automation-220606:2692318")
     implementation rfg.deobf("curse.maven:exnihilo-creatio-274456:2817545")
-    implementation rfg.deobf("curse.maven:gregtech-ce-293327:3478805")
+    implementation rfg.deobf("curse.maven:gregtech-nomifactory-edition-1019238:5411833")
     implementation rfg.deobf("curse.maven:gregicality-364851:3642665")
     implementation rfg.deobf("curse.maven:jei-238222:5846804")
     implementation rfg.deobf("curse.maven:extrautils2-225561:2678374")
     implementation rfg.deobf("curse.maven:opencomputers-223008:6608365")
     implementation rfg.deobf("curse.maven:gtce2oc-304485:3109652")
+    implementation rfg.deobf("curse.maven:mcjtylib-233105:2745846")
+    implementation rfg.deobf("curse.maven:xnet-260912:2745852")
+    implementation rfg.deobf("curse.maven:ocxnetdriver-285385:2634368")
+    implementation rfg.deobf("curse.maven:cofh-69162:2920433")
+    implementation rfg.deobf("curse.maven:thermal-foundation-222880:2926428")
+    implementation rfg.deobf("curse.maven:thermal-dynamics-227443:2920505")
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'

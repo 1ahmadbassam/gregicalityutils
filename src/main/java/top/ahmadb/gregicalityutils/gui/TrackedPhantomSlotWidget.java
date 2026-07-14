@@ -25,6 +25,7 @@ import top.ahmadb.gregicalityutils.mixin.gregtech.MixinMetaTileEntityWorkbenchAc
 
 public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
 
+    public static final java.util.WeakHashMap<MetaTileEntityWorkbench, Long> ACTIVE_WORKBENCHES = new java.util.WeakHashMap<>();
     private final MetaTileEntityWorkbench workbench;
     private final IItemHandlerModifiable gridHandler;
     private final int slotX;
@@ -45,17 +46,18 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
     }
 
     // --- OREDICT & EQUIVALENCE CHECKER ---
-    private boolean isItemEquivalent(ItemStack blueprint, ItemStack target) {
+    private boolean isItemEquivalentOptimized(ItemStack blueprint, int[] cachedBlueprintIDs, ItemStack target) {
         if (blueprint.isEmpty() || target.isEmpty()) return false;
         
-        // 1. Direct Match or Wildcard Match
         if (OreDictionary.itemMatches(blueprint, target, false)) return true;
 
-        // 2. OreDictionary Tag Match (e.g., both are "ingotCopper")
-        int[] blueprintIDs = OreDictionary.getOreIDs(blueprint);
+        // Early exit: if the blueprint has no OreDict tags, it cannot match via tags
+        if (cachedBlueprintIDs.length == 0) return false;
+
+        // We only fetch the target IDs if a match is actually possible
         int[] targetIDs = OreDictionary.getOreIDs(target);
 
-        for (int id1 : blueprintIDs) {
+        for (int id1 : cachedBlueprintIDs) {
             for (int id2 : targetIDs) {
                 if (id1 == id2) return true;
             }
@@ -105,6 +107,7 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
         super.detectAndSendChanges();
 
         if (this.workbench != null && !this.workbench.getWorld().isRemote) {
+            ACTIVE_WORKBENCHES.put(this.workbench, this.workbench.getWorld().getTotalWorldTime());
             CraftingRecipeResolver resolver = ((MixinMetaTileEntityWorkbenchAccessor) this.workbench).invokeGetRecipeResolver();
 
             if (resolver != null) {
@@ -113,16 +116,17 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
                 ItemStack actualItemInNetwork = ItemStack.EMPTY;
 
                 if (!stackInSlot.isEmpty()) {
-                    // Scan the entire storage network for ANY item that is OreDict-equivalent to the blueprint
+                    // CACHE 1: Grab the blueprint IDs once per tick, not per network item!
+                    int[] blueprintIDs = OreDictionary.getOreIDs(stackInSlot);
+
                     for (ItemStackKey storedKey : resolver.getItemSourceList().getStoredItems()) {
                         ItemStack storedStack = storedKey.getItemStack();
 
-                        if (isItemEquivalent(stackInSlot, storedStack)) {
+                        if (isItemEquivalentOptimized(stackInSlot, blueprintIDs, storedStack)) {
                             IItemInfo info = resolver.getItemSourceList().getItemInfo(storedKey);
                             if (info != null && info.getTotalItemAmount() > 0) {
                                 currentAvailable += info.getTotalItemAmount();
                                 
-                                // Capture the FIRST real, valid item we find in the network to show to the player!
                                 if (actualItemInNetwork.isEmpty()) {
                                     actualItemInNetwork = storedStack.copy();
                                 }
@@ -134,7 +138,6 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
                 final int amountToSend = currentAvailable;
                 final ItemStack itemToSend = actualItemInNetwork;
 
-                // Send a UI packet if the amount changed, OR if the actual item texture/damage changed!
                 if (amountToSend != this.lastAvailable || !ItemStack.areItemStacksEqual(itemToSend, this.lastActualItem)) {
                     this.lastAvailable = amountToSend;
                     this.lastActualItem = itemToSend.copy();
@@ -170,6 +173,10 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
 
             // Calculate Demand using OreDict Equivalence
             int demandUpToThisSlot = 0;
+            
+            // CACHE: Grab the IDs once per frame instead of inside the loop
+            int[] cachedBlueprintIDs = OreDictionary.getOreIDs(stackInSlot);
+
             for (int i = 0; i <= this.slotIndex; i++) {
                 ItemStack gridStack = this.gridHandler.getStackInSlot(i);
                 if (!gridStack.isEmpty()) {
@@ -178,7 +185,8 @@ public class TrackedPhantomSlotWidget extends PhantomSlotWidget {
                     } else if (isDamageable) {
                         if (gridStack.getItem() == stackInSlot.getItem()) demandUpToThisSlot++;
                     } else {
-                        if (isItemEquivalent(stackInSlot, gridStack)) demandUpToThisSlot++;
+                        // USE THE NEW OPTIMIZED METHOD HERE
+                        if (isItemEquivalentOptimized(stackInSlot, cachedBlueprintIDs, gridStack)) demandUpToThisSlot++;
                     }
                 }
             }

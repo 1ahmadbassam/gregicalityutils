@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
@@ -71,13 +72,28 @@ public class BlockAnalogEmitter extends Block {
 
     @Override
     public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
-        if (((Entity) player).isSneaking()) {
+        ItemStack heldItem = player.getHeldItem(hand);
+
+        // 1. Check if the player is holding an item registered as a "wrench" (like the Crescent Hammer)
+        if (!heldItem.isEmpty() && heldItem.getItem().getToolClasses(heldItem).contains("wrench")) {
             if (!world.isRemote) {
-                world.setBlockState(pos, state.withProperty(FACING, state.getValue(FACING).rotateY()));
+                EnumFacing currentFacing = state.getValue(FACING);
+                
+                // 2. Safely cycle through all 6 valid directions (DOWN, UP, NORTH, SOUTH, WEST, EAST)
+                EnumFacing nextFacing = EnumFacing.VALUES[(currentFacing.getIndex() + 1) % EnumFacing.VALUES.length];
+                
+                world.setBlockState(pos, state.withProperty(FACING, nextFacing));
             }
-            return true;
+            return true; // Successfully rotated, stop further processing
         }
 
+        // 3. Standard Minecraft behavior: If the player is sneaking (without a wrench), 
+        // they probably want to place a block against this one, not open the GUI.
+        if (player.isSneaking()) {
+            return false;
+        }
+
+        // 4. Open the GUI for normal empty-hand right-clicks
         if (world.isRemote) {
             Minecraft.getMinecraft().displayGuiScreen(new GuiAnalogEmitter(pos));
         }
