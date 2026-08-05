@@ -6,7 +6,7 @@ This mod only perfectly makes sense with that specific modpack, and not any inst
 
 Note: Gregicality: Skyblock Edition is a horrible pack. Don't play it. It's a half-assed improvement over Gregblock. Unless you wanna spend potential hours of your playtime debugging or editing configs and scripts and even quests.
 
-I don't guarantee you anything works in this mod. This is really just for personal use and some stuff is still untested as I did not reach them in my world yet. You're using AI code, keep that in mind, and keep a lot of backups.
+I don't guarantee you anything works in this mod. This is really just for personal use and some stuff is still untested as I did not reach them in my world yet. You're using AI code, keep that in mind, and keep a lot of backups. This is also updated frequently as I play and discover problems and no guarantees I keep this README up-to-date.
 
 ## What This Does
 
