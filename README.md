@@ -70,3 +70,10 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
   * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended.
   * Fix running blast furnaces + large multiblocks breaking on world reload (NullPointerException).
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
+
+## Legal & Credits
+
+* **Minecraft** is a trademark of **Mojang Synergies AB** / **Microsoft Corporation**. This mod is not affiliated with, endorsed by, or associated with Mojang AB or Microsoft.
+* **Mods & Dependencies:** All third-party mods, APIs, and libraries mentioned or utilized by this project (including GregTech, Gregicality, OpenComputers, XNet, ProgressiveAutomation, Extra Utilities 2, and Baubles) are the intellectual property of their respective owners and creators. 
+* **Assets & Code:** Any assets or original code snippets adapted from other open-source projects remain under their original respective open-source licenses.
+* **Template:** [ForgeDevEnv](https://github.com/CleanroomMC/ForgeDevEnv), Ownership of CleanRoomMC.
