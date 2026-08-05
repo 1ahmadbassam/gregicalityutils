@@ -67,6 +67,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Rock breakers can now generate dirt and coarse dirt if placed near water and witchwater at the same rate as stones.
 * Allow armor suites to be worn in Bauble slots. I only meant to add this for the nightvision goggles, battery pack, and jetpacks, but apparently it worked for everything. Don't abuse it.
 * Bug fixes:
+  * Add the missing overclock button to electric sieves.
   * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended.
   * Fix running blast furnaces + large multiblocks breaking on world reload (NullPointerException).
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
