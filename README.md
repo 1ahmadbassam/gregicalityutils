@@ -8,9 +8,12 @@ Note: Gregicality: Skyblock Edition is a horrible pack. Don't play it. It's a ha
 
 I don't guarantee you anything works in this mod. This is really just for personal use and some stuff is still untested as I did not reach them in my world yet. You're using AI code, keep that in mind, and keep a lot of backups. This is also updated frequently as I play and discover problems and no guarantees I keep this README up-to-date.
 
+No JAR. Build it yourself. Simply run `gradlew build` with JDK 25 on your PATH, not hard.
+
 ## What This Does
 
 Required Dependencies: Gregtech: Nomifactory Edition 1.18.3, Gregicality (Obviously), OpenComputers, GTCE2OC, XNet, OCXNetDriver, ProgressiveAutomation, Extra Utilities 2, and their respective libraries.
+
 Optional Dependencies: Baubles.
 
 ### Standalone features (blocks)
