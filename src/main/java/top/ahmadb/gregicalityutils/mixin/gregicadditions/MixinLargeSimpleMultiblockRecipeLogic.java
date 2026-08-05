@@ -32,14 +32,10 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
     @Shadow(remap = false) @Final private int durationPercentage;
     @Shadow(remap = false) @Final private int chancePercentage;
     @Shadow(remap = false) @Final private int stack;
-
+    
     // Shadowing the helper methods from the inner class
-    @Shadow(remap = false) protected abstract void findIngredients(Set<ItemStack> countIngredients, IItemHandlerModifiable inputs);
-    @Shadow(remap = false) protected abstract int getMinRatioItem(Set<ItemStack> countIngredients, Recipe r, int maxItemsLimit);
-    @Shadow(remap = false) protected abstract void findFluid(Map<String, Integer> countFluid, IMultipleTankHandler fluidInputs);
-    @Shadow(remap = false) protected abstract int getMinRatioFluid(Map<String, Integer> countFluid, Recipe r, int maxItemsLimit);
-    @Shadow(remap = false) protected abstract void multiplyInputsAndOutputs(List<CountableIngredient> newRecipeInputs, List<FluidStack> newFluidInputs, List<ItemStack> outputI, List<FluidStack> outputF, Recipe r, int multiplier);
     @Shadow(remap = false) protected abstract void copyChancedItemOutputs(RecipeBuilder<?> newRecipe, Recipe oldRecipe, int multiplier);
+
 
     /**
      * @author ahmadb
@@ -75,75 +71,183 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
 
         if (currentRecipe != null && setupAndConsumeRecipeInputs(currentRecipe)) {
             setupRecipe(currentRecipe);
+            
+            // Clear the notification list ONLY because the recipe successfully started
+            metaTileEntity.getNotifiedItemInputList().clear();
+            metaTileEntity.getNotifiedFluidInputList().clear();
+        } else if (currentRecipe == null) {
+            // Clear the notification list because no valid recipe exists for these inputs
+            metaTileEntity.getNotifiedItemInputList().clear();
+            metaTileEntity.getNotifiedFluidInputList().clear();
         }
-        
-        // Clear the notification list so it doesn't poll every tick
-        metaTileEntity.getNotifiedItemInputList().clear();
-        metaTileEntity.getNotifiedFluidInputList().clear();
+        // If currentRecipe != null but setupAndConsumeRecipeInputs fails, we intentionally 
+        // leave the notification lists alone so the machine retries next tick.
     }
 
-    /**
+/**
      * @author ahmadb
-     * @reason Strip forceRecipeRecheck() call to prevent crashes on Nomifactory forks.
+     * @reason Completely rewrites parallel recipe generation to bypass order-dependent HashSet bugs 
+     * and correctly group ingredients to prevent the RecipeBuilder from overwriting them.
      */
     @Overwrite(remap = false)
     protected Recipe createRecipe(long maxVoltage, IItemHandlerModifiable inputs, IMultipleTankHandler fluidInputs, Recipe matchingRecipe) {
         int maxItemsLimit = this.stack;
-        int EUt;
-        int duration;
         int currentTier = getOverclockingTier(maxVoltage);
-        int tierNeeded;
-        int minMultiplier = Integer.MAX_VALUE;
-
-        tierNeeded = Math.max(1, GAUtility.getTierByVoltage(matchingRecipe.getEUt()));
-        maxItemsLimit *= currentTier - tierNeeded;
+        int tierNeeded = Math.max(1, GAUtility.getTierByVoltage(matchingRecipe.getEUt()));
+        maxItemsLimit *= (currentTier - tierNeeded);
         maxItemsLimit = Math.max(1, maxItemsLimit);
 
-        // REMOVED: forceRecipeRecheck();
+        int minMultiplier = maxItemsLimit;
 
-        Set<ItemStack> countIngredients = new HashSet<>();
+        // Safely calculate item multiplier
         if (!matchingRecipe.getInputs().isEmpty()) {
-            this.findIngredients(countIngredients, inputs);
-            minMultiplier = Math.min(maxItemsLimit, this.getMinRatioItem(countIngredients, matchingRecipe, maxItemsLimit));
+            for (CountableIngredient ci : matchingRecipe.getInputs()) {
+                if (ci.getCount() == 0) continue; 
+                
+                int totalAvailable = 0;
+                for (int i = 0; i < inputs.getSlots(); i++) {
+                    ItemStack stack = inputs.getStackInSlot(i);
+                    if (!stack.isEmpty() && ci.getIngredient().apply(stack)) {
+                        totalAvailable += stack.getCount();
+                    }
+                }
+                minMultiplier = Math.min(minMultiplier, totalAvailable / ci.getCount());
+            }
         }
 
-        Map<String, Integer> countFluid = new HashMap<>();
+        // Safely calculate fluid multiplier
         if (!matchingRecipe.getFluidInputs().isEmpty()) {
-            this.findFluid(countFluid, fluidInputs);
-            minMultiplier = Math.min(minMultiplier, this.getMinRatioFluid(countFluid, matchingRecipe, maxItemsLimit));
+            for (FluidStack fs : matchingRecipe.getFluidInputs()) {
+                if (fs.amount == 0) continue;
+                
+                int totalAvailable = 0;
+                for (int i = 0; i < fluidInputs.getTanks(); i++) {
+                    FluidStack tankFluid = fluidInputs.getTankAt(i).getFluid();
+                    if (tankFluid != null && tankFluid.isFluidEqual(fs)) {
+                        totalAvailable += tankFluid.amount;
+                    }
+                }
+                minMultiplier = Math.min(minMultiplier, totalAvailable / fs.amount);
+            }
         }
 
-        if (minMultiplier == Integer.MAX_VALUE) {
-            return null;
-        }
-
-        EUt = matchingRecipe.getEUt();
-        duration = matchingRecipe.getDuration();
-
-        List<CountableIngredient> newRecipeInputs = new ArrayList<>();
-        List<FluidStack> newFluidInputs = new ArrayList<>();
-        List<ItemStack> outputI = new ArrayList<>();
-        List<FluidStack> outputF = new ArrayList<>();
-        this.multiplyInputsAndOutputs(newRecipeInputs, newFluidInputs, outputI, outputF, matchingRecipe, minMultiplier);
+        if (minMultiplier <= 0) return null;
 
         RecipeBuilder<?> newRecipe = recipeMap.recipeBuilder();
+
+        // 1. Group and apply Item Inputs
+        List<CountableIngredient> newRecipeInputs = new ArrayList<>();
+        List<CountableIngredient> newNotConsumables = new ArrayList<>();
+        
+        for (CountableIngredient ci : matchingRecipe.getInputs()) {
+            if (ci.getCount() == 0 || ci.getIngredient().getClass().getSimpleName().equals("IntCircuitIngredient")) {
+                newNotConsumables.add(new CountableIngredient(ci.getIngredient(), 0));
+            } else {
+                newRecipeInputs.add(new CountableIngredient(ci.getIngredient(), ci.getCount() * minMultiplier));
+            }
+        }
+        
+        if (!newRecipeInputs.isEmpty()) newRecipe.inputsIngredients(newRecipeInputs);
+        for (CountableIngredient ci : newNotConsumables) newRecipe.notConsumable(ci.getIngredient());
+
+        // 2. Group and apply Fluid Inputs
+        List<FluidStack> newFluidInputs = new ArrayList<>();
+        for (FluidStack fs : matchingRecipe.getFluidInputs()) {
+            if (fs.amount > 0) newFluidInputs.add(new FluidStack(fs.getFluid(), fs.amount * minMultiplier));
+        }
+        if (!newFluidInputs.isEmpty()) newRecipe.fluidInputs(newFluidInputs);
+
+        // 3. Group and apply Item Outputs
+        List<ItemStack> outputI = new ArrayList<>();
+        for (ItemStack s : matchingRecipe.getOutputs()) {
+            ItemStack itemCopy = s.copy();
+            itemCopy.setCount(s.getCount() * minMultiplier);
+            outputI.add(itemCopy);
+        }
+        if (!outputI.isEmpty()) newRecipe.outputs(outputI);
+
+        // 4. Group and apply Fluid Outputs
+        List<FluidStack> outputF = new ArrayList<>();
+        for (FluidStack f : matchingRecipe.getFluidOutputs()) {
+            FluidStack fluidCopy = f.copy();
+            fluidCopy.amount = f.amount * minMultiplier;
+            outputF.add(fluidCopy);
+        }
+        if (!outputF.isEmpty()) newRecipe.fluidOutputs(outputF);
+
+        // Reconstruct Chanced Outputs
         copyChancedItemOutputs(newRecipe, matchingRecipe, minMultiplier);
 
+        // Check if outputs can fit
         List<ItemStack> totalOutputs = newRecipe.getChancedOutputs().stream().map(Recipe.ChanceEntry::getItemStack).collect(Collectors.toList());
         totalOutputs.addAll(outputI);
         
-        boolean canFitOutputs = InventoryUtils.simulateItemStackMerge(totalOutputs, this.getOutputInventory());
-        if (!canFitOutputs) {
-            return matchingRecipe; // Falls back to 1x processing, which will be caught by setupAndConsumeRecipeInputs handling isOutputsFull
+        if (!InventoryUtils.simulateItemStackMerge(totalOutputs, this.getOutputInventory())) {
+            return matchingRecipe; 
         }
 
-        newRecipe.inputsIngredients(newRecipeInputs)
-                .fluidInputs(newFluidInputs)
-                .outputs(outputI)
-                .fluidOutputs(outputF)
-                .EUt(Math.max(1, EUt * this.EUtPercentage / 100))
-                .duration((int) Math.max(3, duration * (this.durationPercentage / 100.0)));
+        // Apply EUt and duration scaling
+        newRecipe.EUt(Math.max(1, matchingRecipe.getEUt() * this.EUtPercentage / 100))
+                 .duration((int) Math.max(3, matchingRecipe.getDuration() * (this.durationPercentage / 100.0)));
 
         return newRecipe.build().getResult();
+    }
+   
+    /**
+     * @author ahmadb
+     * @reason Prevent circuits from bottlenecking the parallelization multiplier.
+     */
+    @Overwrite(remap = false)
+    protected int getMinRatioItem(Set<ItemStack> countIngredients, Recipe r, int maxItemsLimit) {
+        int minMultiplier = Integer.MAX_VALUE;
+        for (CountableIngredient ci : r.getInputs()) {
+            // Skip empty counts AND skip circuits so they don't limit the multiplier
+            if (ci.getCount() == 0 || ci.getIngredient().getClass().getSimpleName().equals("IntCircuitIngredient")) {
+                continue;
+            }
+            for (ItemStack wholeItemStack : countIngredients) {
+                if (ci.getIngredient().apply(wholeItemStack)) {
+                    int ratio = Math.min(maxItemsLimit, wholeItemStack.getCount() / ci.getCount());
+                    if (ratio < minMultiplier) {
+                        minMultiplier = ratio;
+                    }
+                    break;
+                }
+            }
+        }
+        return minMultiplier;
+    }
+
+    /**
+     * @author ahmadb
+     * @reason Prevent circuit ingredients from losing their notConsumable property and being multiplied.
+     */
+    @Overwrite(remap = false)
+    protected void multiplyInputsAndOutputs(List<CountableIngredient> newRecipeInputs, List<FluidStack> newFluidInputs, List<ItemStack> outputI, List<FluidStack> outputF, Recipe r, int multiplier) {
+        for (CountableIngredient ci : r.getInputs()) {
+            // If it's a circuit, pass it through exactly as it is without multiplying
+            if (ci.getIngredient().getClass().getSimpleName().equals("IntCircuitIngredient")) {
+                newRecipeInputs.add(ci);
+            } else {
+                CountableIngredient newIngredient = new CountableIngredient(ci.getIngredient(), ci.getCount() * multiplier);
+                newRecipeInputs.add(newIngredient);
+            }
+        }
+        for (FluidStack fs : r.getFluidInputs()) {
+            FluidStack newFluid = new FluidStack(fs.getFluid(), fs.amount * multiplier);
+            newFluidInputs.add(newFluid);
+        }
+        for (ItemStack s : r.getOutputs()) {
+            int num = s.getCount() * multiplier;
+            ItemStack itemCopy = s.copy();
+            itemCopy.setCount(num);
+            outputI.add(itemCopy);
+        }
+        for (FluidStack f : r.getFluidOutputs()) {
+            int fluidNum = f.amount * multiplier;
+            FluidStack fluidCopy = f.copy();
+            fluidCopy.amount = fluidNum;
+            outputF.add(fluidCopy);
+        }
     }
 }

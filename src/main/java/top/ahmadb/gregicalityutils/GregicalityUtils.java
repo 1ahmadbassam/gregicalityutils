@@ -40,6 +40,11 @@ public class GregicalityUtils {
     public void preInit(FMLPreInitializationEvent event) {
         // Register the networking packet. ID 0, goes to the SERVER side.
         NETWORK.registerMessage(PacketUpdateEmitter.Handler.class, PacketUpdateEmitter.class, 0, Side.SERVER);
+
+        // ONLY initialize client-side features like keybinds if we are on the physical client
+        if (event.getSide() == Side.CLIENT) {
+            top.ahmadb.gregicalityutils.client.RingToggleKeybind.init();
+        }
     }
 
     // This nested class handles all the standard 1.12.2 Forge registries automatically

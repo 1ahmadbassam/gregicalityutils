@@ -3,6 +3,7 @@ package top.ahmadb.gregicalityutils;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockReed;
 import net.minecraft.block.BlockCactus;
+import net.minecraft.block.BlockNetherWart;
 import net.minecraft.block.IGrowable;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Items;
@@ -63,7 +64,7 @@ public class TileEntityTwerkSimulator extends TileEntity implements ITickable {
                             }
                         }
                     }
-                    else if (block instanceof BlockReed || block instanceof BlockCactus) {
+                    else if (block instanceof BlockReed || block instanceof BlockCactus || block instanceof BlockNetherWart) {
                         block.updateTick(world, target, state, world.rand);
                         world.playEvent(2005, target, 0);
                     }

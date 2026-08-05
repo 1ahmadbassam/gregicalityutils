@@ -116,13 +116,20 @@ public abstract class MixinGAMultiblockRecipeLogic extends MultiblockRecipeLogic
             if (currentRecipe != null && setupAndConsumeRecipeInputs(currentRecipe, i)) {
                 lastRecipeIndex = i;
                 setupRecipe(currentRecipe);
-                break;
+                // Recipe started successfully, clear notifications
+                metaTileEntity.getNotifiedItemInputList().clear();
+                metaTileEntity.getNotifiedFluidInputList().clear();
+                return;
             }
         }
 
         // Flag deadlocks if no recipe matched
         this.invalidInputsForRecipes = !foundRecipe;
-        metaTileEntity.getNotifiedItemInputList().clear();
-        metaTileEntity.getNotifiedFluidInputList().clear();
+        
+        if (!foundRecipe) {
+            // Only clear notifications if we've exhaustively proven NO recipes can form on any bus
+            metaTileEntity.getNotifiedItemInputList().clear();
+            metaTileEntity.getNotifiedFluidInputList().clear();
+        }
     }
 }
