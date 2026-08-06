@@ -85,7 +85,7 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
 
     @Override
     protected Iterable<ItemStack> getDropHandler() {
-        return com.rwtema.extrautils2.compatibility.InventoryHelper.getItemHandlerIterator(this.contents, this.output, this.gcu_upgrades);
+        return com.rwtema.extrautils2.itemhandler.InventoryHelper.getItemHandlerIterator(this.contents, this.output, this.gcu_upgrades);
     }
 
     @Override
