@@ -42,6 +42,11 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
     @Shadow XUCrafter crafter;
     @Shadow private ItemStackHandler contents;
 
+    @Shadow NBTSerializable.NBTByteArray slot_sides;
+    @Shadow private net.minecraftforge.items.IItemHandler[] sideHandlers;
+
+    @Unique private int gcu_lastSlotSidesHash = 0;
+
     @Shadow private IRecipe getRecipe() { return null; }
     @Shadow private void trySpreadItems() {}
 
@@ -195,5 +200,18 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
             }
         }
         return true;
+    }
+    
+    @Inject(method = "getSideHandler", at = @At("HEAD"))
+    private void gcu$invalidateStaleSideHandlers(int face, CallbackInfoReturnable<net.minecraftforge.items.IItemHandler> cir) {
+        if (this.slot_sides != null && this.slot_sides.array != null) {
+            // Quickly hash the 9 slots to see if the player changed the rules in the GUI
+            int currentHash = java.util.Arrays.hashCode(this.slot_sides.array);
+            if (currentHash != this.gcu_lastSlotSidesHash) {
+                // The rules changed! Wipe the stale XU2 cache so it rebuilds properly.
+                this.sideHandlers = null;
+                this.gcu_lastSlotSidesHash = currentHash;
+            }
+        }
     }
 }
