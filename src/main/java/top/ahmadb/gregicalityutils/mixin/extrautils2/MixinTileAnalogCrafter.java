@@ -1,6 +1,5 @@
 package top.ahmadb.gregicalityutils.mixin.extrautils2;
 
-import top.ahmadb.gregicalityutils.extrautils2.IAnalogCrafterExtensions;
 import com.rwtema.extrautils2.compatibility.CompatHelper;
 import com.rwtema.extrautils2.compatibility.StackHelper;
 import com.rwtema.extrautils2.crafting.NullRecipe;
@@ -42,28 +41,50 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
     @Shadow XUCrafter crafter;
     @Shadow private ItemStackHandler contents;
 
-    @Shadow NBTSerializable.NBTByteArray slot_sides;
-    @Shadow private net.minecraftforge.items.IItemHandler[] sideHandlers;
-
-    @Unique private int gcu_lastSlotSidesHash = 0;
-
     @Shadow private IRecipe getRecipe() { return null; }
     @Shadow private void trySpreadItems() {}
+    @Shadow protected abstract <T> T registerNBT(String name, T object);
+    @Shadow NBTSerializable.NBTByteArray slot_sides;
+    @Shadow private net.minecraftforge.items.IItemHandler[] sideHandlers;
+    @Shadow private com.rwtema.extrautils2.itemhandler.PublicWrapper.Extract extractHandler;
 
     @Unique private SingleStackHandlerUpgrades gcu_upgrades;
     @Unique private NBTSerializable.NBTBoolean gcu_limit_to_one;
     @Unique private int gcu_accumulator = 0;
+    @Unique private int gcu_lastSlotSidesHash = 0;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void gcu$onInit(CallbackInfo ci) {
-        this.gcu_upgrades = this.registerNBT("upgrades", new SingleStackHandlerUpgrades(EnumSet.of(Upgrade.SPEED)) {
+        this.gcu_upgrades = new SingleStackHandlerUpgrades(EnumSet.of(Upgrade.SPEED)) {
             @Override
             protected void onContentsChanged() {
                 MixinTileAnalogCrafter.this.markDirty();
                 PowerManager.instance.markDirty(MixinTileAnalogCrafter.this);
             }
-        });
+        };
         this.gcu_limit_to_one = this.registerNBT("limit_to_one", new NBTSerializable.NBTBoolean(false));
+    }
+
+    @Override
+    public net.minecraft.nbt.NBTTagCompound writeToNBT(net.minecraft.nbt.NBTTagCompound compound) {
+        compound = super.writeToNBT(compound);
+        if (this.gcu_upgrades != null) {
+            compound.setTag("gcu_upgrades_data", this.gcu_upgrades.serializeNBT());
+        }
+        return compound;
+    }
+
+    @Override
+    public void readFromNBT(net.minecraft.nbt.NBTTagCompound compound) {
+        super.readFromNBT(compound);
+        if (this.gcu_upgrades != null && compound.hasKey("gcu_upgrades_data")) {
+            this.gcu_upgrades.deserializeNBT(compound.getCompoundTag("gcu_upgrades_data"));
+        }
+    }
+
+    @Override
+    protected Iterable<ItemStack> getDropHandler() {
+        return com.rwtema.extrautils2.compatibility.InventoryHelper.getItemHandlerIterator(this.contents, this.output, this.gcu_upgrades);
     }
 
     @Override
@@ -83,6 +104,27 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
         else cir.setReturnValue(Upgrade.SPEED.getPowerUse(level));
     }
 
+    @Inject(method = "getSideHandler", at = @At("HEAD"))
+    private void gcu$invalidateStaleSideHandlers(int face, CallbackInfoReturnable<net.minecraftforge.items.IItemHandler> cir) {
+        if (this.slot_sides != null && this.slot_sides.array != null) {
+            int currentHash = java.util.Arrays.hashCode(this.slot_sides.array);
+            if (currentHash != this.gcu_lastSlotSidesHash) {
+                this.sideHandlers = null;
+                this.gcu_lastSlotSidesHash = currentHash;
+            }
+        }
+    }
+
+    @Inject(method = "getSideHandler", at = @At("RETURN"), cancellable = true)
+    private void gcu$fixOutputSides(int face, CallbackInfoReturnable<net.minecraftforge.items.IItemHandler> cir) {
+        if (cir.getReturnValue() == null) {
+            if (this.sideHandlers != null) {
+                this.sideHandlers[face] = this.extractHandler;
+            }
+            cir.setReturnValue(this.extractHandler);
+        }
+    }
+
     @Inject(method = {"update", "func_73660_a"}, at = @At("HEAD"), cancellable = true)
     public void optimizedUpdate(CallbackInfo ci) {
         ci.cancel();
@@ -95,13 +137,12 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
         int speed = 1 + this.gcu_upgrades.getLevel(Upgrade.SPEED);
         this.gcu_accumulator += speed;
 
-        // Loop handles speed upgrades natively while preserving 4-tick delay mechanics internally
         while (this.gcu_accumulator >= 4) {
             this.gcu_accumulator -= 4;
 
             boolean craftedOrWorking = gcu$performCraftingStep();
             if (!craftedOrWorking) {
-                this.gcu_accumulator = 0; // Prevent runaway idle speed banking
+                this.gcu_accumulator = 0; 
                 break;
             }
         }
@@ -192,26 +233,18 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
                 }
 
                 if (StackHelper.isNonNull(remainStack)) {
-                    remainStack = this.contents.insertItem(i, remainStack, false);
-                    if (StackHelper.isNonNull(remainStack)) {
-                        this.extraStacks.addStack(remainStack);
+                    ItemStack currentInSlot = this.contents.getStackInSlot(i);
+                    if (StackHelper.isNull(currentInSlot)) {
+                        this.contents.setStackInSlot(i, remainStack);
+                    } else {
+                        remainStack = this.contents.insertItem(i, remainStack, false);
+                        if (StackHelper.isNonNull(remainStack)) {
+                            this.extraStacks.addStack(remainStack);
+                        }
                     }
                 }
             }
         }
         return true;
-    }
-    
-    @Inject(method = "getSideHandler", at = @At("HEAD"))
-    private void gcu$invalidateStaleSideHandlers(int face, CallbackInfoReturnable<net.minecraftforge.items.IItemHandler> cir) {
-        if (this.slot_sides != null && this.slot_sides.array != null) {
-            // Quickly hash the 9 slots to see if the player changed the rules in the GUI
-            int currentHash = java.util.Arrays.hashCode(this.slot_sides.array);
-            if (currentHash != this.gcu_lastSlotSidesHash) {
-                // The rules changed! Wipe the stale XU2 cache so it rebuilds properly.
-                this.sideHandlers = null;
-                this.gcu_lastSlotSidesHash = currentHash;
-            }
-        }
     }
 }

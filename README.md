@@ -54,6 +54,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Allows the Mechanical Miner to OreExcavate (break down completely) a mushroom tree.
 * Adds a configurable keybind for activating inferior flight rings (chicken ring and squid ring).
 * Fix bug with analog crafter side-gating interaction with AE2 buses.
+* Fix analog crafter consuming a tool if the slot it was placed on is disabled.
 * Analog Crafter new features:
   * Support speed upgrades like the Mechanical Crafter.
   * Allow limiting items in slots to 1 rather than 1 stack.
