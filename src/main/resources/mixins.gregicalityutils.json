@@ -45,6 +45,8 @@
     "extrautils2.FlatTransferNodeHandlerAccessor",
     "extrautils2.MixinPlayerPowerSquid",
     "extrautils2.MixinPlayerPowerChicken",
+    "extrautils2.MixinContainerAnalogCrafter",
+    "extrautils2.MixinTileAnalogCrafterContents",
     "ocxnetdriver.MixinEnvironmentXnetController",
     "ocxnetdriver.MixinEnvironmentXnetControllerOptimizeItems"
   ],

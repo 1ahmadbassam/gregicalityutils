@@ -82,7 +82,7 @@ public abstract class MixinGAMultiblockRecipeLogic extends MultiblockRecipeLogic
 
     /**
      * @author ahmadb
-     * @reason Updating distinct bus logic to rely on the GTCEu notification system.
+     * @reason Updating distinct bus logic to rely on the GTCEu notification system and disabling cache trapping.
      */
     @Overwrite(remap = false)
     private void trySearchNewRecipeDistinct() {
@@ -91,18 +91,8 @@ public abstract class MixinGAMultiblockRecipeLogic extends MultiblockRecipeLogic
         List<IItemHandlerModifiable> importInventory = getInputBuses();
         IMultipleTankHandler importFluids = getInputTank();
 
-        // Check cache hit
-        if (previousRecipe != null && previousRecipe.matches(false, importInventory.get(lastRecipeIndex), importFluids)) {
-            currentRecipe = previousRecipe;
-            if (setupAndConsumeRecipeInputs(currentRecipe, lastRecipeIndex)) {
-                setupRecipe(currentRecipe);
-                metaTileEntity.getNotifiedItemInputList().clear();
-                metaTileEntity.getNotifiedFluidInputList().clear();
-                return;
-            }
-        }
+        // Cache check removed entirely. Caching dynamic parallel recipes prevents scaling up.
 
-        // Cache miss, check each distinct bus
         boolean foundRecipe = false;
         for (int i = 0; i < importInventory.size(); i++) {
             IItemHandlerModifiable bus = importInventory.get(i);

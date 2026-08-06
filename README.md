@@ -53,6 +53,9 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Optimizes the following: Flat Transfer Nodes, Analog Crafter, Mechanical User.
 * Allows the Mechanical Miner to OreExcavate (break down completely) a mushroom tree.
 * Adds a configurable keybind for activating inferior flight rings (chicken ring and squid ring).
+* Analog Crafter new features:
+  * Support speed upgrades like the Mechanical Crafter.
+  * Allow limiting items in slots to 1 rather than 1 stack.
 
 ### GregTech Features
 
@@ -71,7 +74,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Allow armor suites to be worn in Bauble slots. I only meant to add this for the nightvision goggles, battery pack, and jetpacks, but apparently it worked for everything. Don't abuse it.
 * Bug fixes:
   * Add the missing overclock button to electric sieves. Also expand the internal sieve inventory for all sieves to 54 slots to successfully run recipes that require 54 distinct item entires (I'm looking at you dirt). Known bug: the GUI is still 24 slots and no I don't intend to fix this. It works correctly with automation (i.e. pipes or conduits) and the lower 30 slots are only used if the first 24 slots are full.
-  * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended.
+  * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended. Furthermore, disable recipe caching for large multiblocks to ensure maximum parallelism when running recipes.
   * Fix running blast furnaces + large multiblocks breaking on world reload (NullPointerException).
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
 

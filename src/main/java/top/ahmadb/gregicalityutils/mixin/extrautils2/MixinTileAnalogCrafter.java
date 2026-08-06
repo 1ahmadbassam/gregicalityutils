@@ -1,27 +1,34 @@
 package top.ahmadb.gregicalityutils.mixin.extrautils2;
 
+import top.ahmadb.gregicalityutils.extrautils2.IAnalogCrafterExtensions;
 import com.rwtema.extrautils2.compatibility.CompatHelper;
 import com.rwtema.extrautils2.compatibility.StackHelper;
 import com.rwtema.extrautils2.crafting.NullRecipe;
 import com.rwtema.extrautils2.itemhandler.SingleStackHandler;
+import com.rwtema.extrautils2.itemhandler.SingleStackHandlerUpgrades;
 import com.rwtema.extrautils2.itemhandler.StackDump;
 import com.rwtema.extrautils2.itemhandler.XUCrafter;
+import com.rwtema.extrautils2.power.PowerManager;
 import com.rwtema.extrautils2.tile.TileAnalogCrafter;
 import com.rwtema.extrautils2.tile.TilePower;
+import com.rwtema.extrautils2.transfernodes.Upgrade;
 import com.rwtema.extrautils2.utils.datastructures.ArrayAccess;
 import com.rwtema.extrautils2.utils.datastructures.NBTSerializable;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraftforge.items.ItemStackHandler;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.EnumSet;
 
 @Mixin(value = TileAnalogCrafter.class, remap = false)
-public abstract class MixinTileAnalogCrafter extends TilePower {
+public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalogCrafterExtensions {
 
     @Shadow private SingleStackHandler output;
     @Shadow private StackDump extraStacks;
@@ -38,40 +45,76 @@ public abstract class MixinTileAnalogCrafter extends TilePower {
     @Shadow private IRecipe getRecipe() { return null; }
     @Shadow private void trySpreadItems() {}
 
-    /**
-     * @author ahmadb
-     * @reason Reorders update logic to check for full output inventory before performing 
-     * expensive recipe calculations and item spreading, fixing massive tick lag.
-     */
-    @Inject(method = {"update", "func_73660_a"}, at = @At("HEAD"), cancellable = true, remap = false)
-    public void optimizedUpdate(CallbackInfo ci) {
-        // Cancel the original method immediately so the unoptimized code never runs
-        ci.cancel();
+    @Unique private SingleStackHandlerUpgrades gcu_upgrades;
+    @Unique private NBTSerializable.NBTBoolean gcu_limit_to_one;
+    @Unique private int gcu_accumulator = 0;
 
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void gcu$onInit(CallbackInfo ci) {
+        this.gcu_upgrades = this.registerNBT("upgrades", new SingleStackHandlerUpgrades(EnumSet.of(Upgrade.SPEED)) {
+            @Override
+            protected void onContentsChanged() {
+                MixinTileAnalogCrafter.this.markDirty();
+                PowerManager.instance.markDirty(MixinTileAnalogCrafter.this);
+            }
+        });
+        this.gcu_limit_to_one = this.registerNBT("limit_to_one", new NBTSerializable.NBTBoolean(false));
+    }
+
+    @Override
+    public SingleStackHandlerUpgrades gcu_getUpgrades() {
+        return this.gcu_upgrades;
+    }
+
+    @Override
+    public NBTSerializable.NBTBoolean gcu_getLimitToOne() {
+        return this.gcu_limit_to_one;
+    }
+
+    @Inject(method = "getPower", at = @At("HEAD"), cancellable = true)
+    public void gcu$getPower(CallbackInfoReturnable<Float> cir) {
+        int level = this.gcu_upgrades.getLevel(Upgrade.SPEED);
+        if (level == 0) cir.setReturnValue(Float.NaN);
+        else cir.setReturnValue(Upgrade.SPEED.getPowerUse(level));
+    }
+
+    @Inject(method = {"update", "func_73660_a"}, at = @At("HEAD"), cancellable = true)
+    public void optimizedUpdate(CallbackInfo ci) {
+        ci.cancel();
         if (this.world.isRemote) return;
 
         if (this.extraStacks.hasStacks()) {
             this.extraStacks.attemptDump(this.output);
         }
 
-        if ((this.world.getTotalWorldTime() % 4L) != 0L) {
-            return;
-        }
+        int speed = 1 + this.gcu_upgrades.getLevel(Upgrade.SPEED);
+        this.gcu_accumulator += speed;
 
+        // Loop handles speed upgrades natively while preserving 4-tick delay mechanics internally
+        while (this.gcu_accumulator >= 4) {
+            this.gcu_accumulator -= 4;
+
+            boolean craftedOrWorking = gcu$performCraftingStep();
+            if (!craftedOrWorking) {
+                this.gcu_accumulator = 0; // Prevent runaway idle speed banking
+                break;
+            }
+        }
+    }
+
+    @Unique
+    private boolean gcu$performCraftingStep() {
         IRecipe recipe = this.getRecipe();
         if (recipe == NullRecipe.INSTANCE) {
             this.progress.value = 0;
             this.max_progress.value = -1;
-            return;
+            return false;
         }
 
-        // =========================================================
-        // OPTIMIZATION: Early Crafting Result & Output Check
-        // =========================================================
         this.crafter.loadStacks(this.contents);
-        
+
         if (!recipe.matches(this.crafter, this.world)) {
-            return; 
+            return false;
         }
 
         ItemStack craftingResult = recipe.getCraftingResult(this.crafter);
@@ -79,9 +122,8 @@ public abstract class MixinTileAnalogCrafter extends TilePower {
         if (StackHelper.isNull(craftingResult) || StackHelper.isNonNull(this.output.insertItem(0, craftingResult, true))) {
             this.max_progress.value = 0;
             this.progress.value = 0;
-            return;
+            return false;
         }
-        // =========================================================
 
         if (this.spread.value) {
             this.trySpreadItems();
@@ -93,19 +135,19 @@ public abstract class MixinTileAnalogCrafter extends TilePower {
             case "OPERATE_REDSTONE_ON":
                 if (!this.powered.value) {
                     this.progress.value = this.max_progress.value = 0;
-                    return;
+                    return false;
                 }
                 break;
             case "OPERATE_REDSTONE_OFF":
                 if (this.powered.value) {
                     this.progress.value = this.max_progress.value = 0;
-                    return;
+                    return false;
                 }
                 break;
             case "OPERATE_REDSTONE_PULSE":
                 if (this.pulses.value == 0) {
                     this.progress.value = this.max_progress.value = 0;
-                    return;
+                    return false;
                 }
                 break;
         }
@@ -117,17 +159,17 @@ public abstract class MixinTileAnalogCrafter extends TilePower {
                     if (StackHelper.getStacksize(stackInSlot) == 1 && stackInSlot.getMaxStackSize() > 1) {
                         this.progress.value = 0;
                         this.max_progress.value = 0;
-                        return;
+                        return false;
                     }
                 }
             }
         }
 
         if (this.max_progress.value <= 0) {
-            this.max_progress.value = StackHelper.getStacksize(craftingResult) * 4 * 5; 
+            this.max_progress.value = StackHelper.getStacksize(craftingResult) * 4 * 5;
         }
 
-        this.progress.value += 4; 
+        this.progress.value += 4;
 
         if (this.progress.value >= this.max_progress.value) {
             if (this.pulses.value > 0) this.pulses.value--;
@@ -152,5 +194,6 @@ public abstract class MixinTileAnalogCrafter extends TilePower {
                 }
             }
         }
+        return true;
     }
 }

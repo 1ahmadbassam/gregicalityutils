@@ -39,7 +39,7 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
 
     /**
      * @author ahmadb
-     * @reason Integrate GTCEu notification system and deadlock prevention state trackers.
+     * @reason Prevent parallelism cache trapping by forcing the machine to always recalculate the recipe multiplier.
      */
     @Overwrite(remap = false)
     protected void trySearchNewRecipeCombined() {
@@ -48,20 +48,11 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
             maxVoltage = ((LargeSimpleRecipeMapMultiblockController) metaTileEntity).maxVoltage;
         }
         
-        Recipe currentRecipe = null;
         IItemHandlerModifiable importInventory = getInputInventory();
         IMultipleTankHandler importFluids = getInputTank();
 
-        // Use the event-driven notification checks instead of laggy dirty polling
-        if (hasNotifiedInputs() ||
-            previousRecipe == null ||
-            !previousRecipe.matches(false, importInventory, importFluids)) {
-            
-            currentRecipe = findRecipe(maxVoltage, importInventory, importFluids);
-        } else {
-            currentRecipe = previousRecipe;
-        }
-
+        // Always bypass the cache. Caching a 1x recipe traps the machine into running 1x forever.
+        Recipe currentRecipe = findRecipe(maxVoltage, importInventory, importFluids);
         if (currentRecipe != null) {
             this.previousRecipe = currentRecipe;
         }
@@ -80,8 +71,6 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
             metaTileEntity.getNotifiedItemInputList().clear();
             metaTileEntity.getNotifiedFluidInputList().clear();
         }
-        // If currentRecipe != null but setupAndConsumeRecipeInputs fails, we intentionally 
-        // leave the notification lists alone so the machine retries next tick.
     }
 
 /**
