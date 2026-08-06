@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SMS",
+    "ACB",
+    "SMS"
+  ],
+  "key": {
+    "S": {
+      "type": "forge:ore_dict",
+      "ore": "plateSkyrium"
+    },
+    "M": {
+      "item": "gregtech:meta_item_1",
+      "data": 32673
+    },
+    "A": {
+      "item": "gregtech:meta_item_1",
+      "data": 32633
+    },
+    "C": {
+      "item": "gregtech:machine",
+      "data": 505
+    },
+    "B": {
+      "item": "gregtech:meta_item_1",
+      "data": 32613
+    }
+  },
+  "result": {
+    "item": "gregicalityutils:capability_proxy",
+    "count": 1
+  }
+}

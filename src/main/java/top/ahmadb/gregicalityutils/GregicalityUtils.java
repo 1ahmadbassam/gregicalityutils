@@ -35,11 +35,16 @@ public class GregicalityUtils {
     public static final Block ANALOG_EMITTER = new BlockAnalogEmitter().setCreativeTab(net.minecraft.creativetab.CreativeTabs.REDSTONE);
     public static final Block TWERK_SIMULATOR = new BlockTwerkSimulator();
     public static final Block SHEEP_STIMULATOR = new BlockSheepStimulator();
+    
+    public static final Block CAPABILITY_PROXY = new BlockCapabilityProxy().setCreativeTab(net.minecraft.creativetab.CreativeTabs.REDSTONE); // Adjust tab if needed
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         // Register the networking packet. ID 0, goes to the SERVER side.
         NETWORK.registerMessage(PacketUpdateEmitter.Handler.class, PacketUpdateEmitter.class, 0, Side.SERVER);
+        
+        // Register the Capability Proxy packet on ID 1
+        NETWORK.registerMessage(PacketUpdateCapabilityProxy.Handler.class, PacketUpdateCapabilityProxy.class, 1, Side.SERVER);
 
         // ONLY initialize client-side features like keybinds if we are on the physical client
         if (event.getSide() == Side.CLIENT) {
@@ -57,11 +62,13 @@ public class GregicalityUtils {
             event.getRegistry().register(ANALOG_EMITTER);
             event.getRegistry().register(TWERK_SIMULATOR);
             event.getRegistry().register(SHEEP_STIMULATOR);
+            event.getRegistry().register(CAPABILITY_PROXY);
             
             // Register the TileEntities
             GameRegistry.registerTileEntity(TileEntityAnalogEmitter.class, new ResourceLocation(MODID, "analog_emitter"));
             GameRegistry.registerTileEntity(TileEntityTwerkSimulator.class, new ResourceLocation(MODID, "twerk_simulator"));
             GameRegistry.registerTileEntity(TileEntitySheepStimulator.class, new ResourceLocation(MODID, "sheep_stimulator"));
+            GameRegistry.registerTileEntity(TileEntityCapabilityProxy.class, new ResourceLocation(MODID, "capability_proxy"));
         }
 
         @SubscribeEvent
@@ -70,6 +77,8 @@ public class GregicalityUtils {
             event.getRegistry().register(new ItemBlock(ANALOG_EMITTER).setRegistryName(ANALOG_EMITTER.getRegistryName()));
             event.getRegistry().register(new ItemBlock(TWERK_SIMULATOR).setRegistryName(TWERK_SIMULATOR.getRegistryName()));
             event.getRegistry().register(new ItemBlock(SHEEP_STIMULATOR).setRegistryName(SHEEP_STIMULATOR.getRegistryName()));
+            
+            event.getRegistry().register(new ItemBlock(CAPABILITY_PROXY).setRegistryName(CAPABILITY_PROXY.getRegistryName()));
         }
 
         @SubscribeEvent
@@ -83,6 +92,9 @@ public class GregicalityUtils {
                 
             ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(SHEEP_STIMULATOR), 0, 
                 new ModelResourceLocation(SHEEP_STIMULATOR.getRegistryName(), "inventory"));
+                
+            ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(CAPABILITY_PROXY), 0, 
+                new ModelResourceLocation(CAPABILITY_PROXY.getRegistryName(), "inventory"));
         }
     }
 }

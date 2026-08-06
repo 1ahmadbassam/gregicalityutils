@@ -21,6 +21,7 @@ Optional Dependencies: Baubles.
 * Analog Emitter, which works exactly like the one from Random Things. Didn't want to add an entire mod into my pack just for that one block so that's why it exists.
 * Twerk Simulator, which is a block version of Twerk-Sim 2K16 but also works with sugarcane, cactus, nether wart, mushroom (to mushroom trees), and even ender lilies from Extra Utilities 2. Can be considered "cheaty" as it basically breaks farming but I don't care or want to focus on food or farming honestly.
 * Sheep Stimulator, which forces sheep to eat grass every second to regen their wool. Best used with grass seeds.
+* Capability Proxy: a mid-game block that allows you to combine item-in, fluid-in, item-out, and fluid-out capabilities into one block; compatible with Gregtech auto push and output multiblock parts. Very useful for AE2 interfaces and multiblocks. Note: this block can be abused easily, but I do not know how to make it less abuse-worthy.
 
 ### ProgressiveAutomation Features
 
