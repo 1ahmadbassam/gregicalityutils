@@ -44,7 +44,6 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
 
     @Shadow private IRecipe getRecipe() { return null; }
     @Shadow private void trySpreadItems() {}
-    @Shadow protected abstract <T> T registerNBT(String name, T object);
     @Shadow NBTSerializable.NBTByteArray slot_sides;
     @Shadow private net.minecraftforge.items.IItemHandler[] sideHandlers;
     @Shadow private com.rwtema.extrautils2.itemhandler.PublicWrapper.Extract extractHandler;
