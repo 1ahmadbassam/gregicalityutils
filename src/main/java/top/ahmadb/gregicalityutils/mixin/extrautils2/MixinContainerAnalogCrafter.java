@@ -1,6 +1,7 @@
 package top.ahmadb.gregicalityutils.mixin.extrautils2;
 
 import com.rwtema.extrautils2.gui.backend.DynamicContainerTile;
+import com.rwtema.extrautils2.gui.backend.IWidget;
 import com.rwtema.extrautils2.gui.backend.WidgetClickMCButtonBoolean;
 import com.rwtema.extrautils2.tile.TileAnalogCrafter;
 import com.rwtema.extrautils2.utils.Lang;
@@ -18,7 +19,6 @@ public abstract class MixinContainerAnalogCrafter extends DynamicContainerTile {
         super(null); 
     } 
 
-    // We target getRSWidget because its signature contains ZERO vanilla classes, preventing obfuscation mismatches.
     @Inject(method = "<init>", 
             at = @At(
                     value = "INVOKE", 
@@ -29,16 +29,21 @@ public abstract class MixinContainerAnalogCrafter extends DynamicContainerTile {
         if (tile instanceof IAnalogCrafterExtensions) {
             IAnalogCrafterExtensions ext = (IAnalogCrafterExtensions) tile;
 
-            // The RS widget is generated at y = this.height + 4
-            // We use this exact same Y coordinate to align our widgets nicely next to it.
             int currentY = this.height + 4;
+            IWidget w;
 
-            // X = 4 (left margin) + 18 (RS widget width) + 4 (padding)
-            this.addWidget(new WidgetClickMCButtonBoolean.NBTBoolean(
+            this.addWidget(w = new WidgetClickMCButtonBoolean.NBTBoolean(
                     26, currentY,
                     ext.gcu_getLimitToOne(),
-                    Lang.translate("Limit to 1"),
+                    Lang.translate("Limit 1"),
                     Lang.translate("Limits input slots strictly to 1 item to prevent recipe pipeline clogging")
+            ));
+
+            this.addWidget(new WidgetClickMCButtonBoolean.NBTBoolean(
+                    w.getX() + w.getW() + 4, currentY,
+                    ext.gcu_getStrictSlots(),
+                    Lang.translate("Lock"),
+                    Lang.translate("When toggled ON, it records which slots are currently filled. Crafting halts if any of these locked slots become empty.")
             ));
 
             // Setup Speed Upgrade slot at the far right of the GUI

@@ -58,6 +58,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Analog Crafter new features:
   * Support speed upgrades like the Mechanical Crafter.
   * Allow limiting items in slots to 1 rather than 1 stack.
+  * Allow locking crafting to occupied slots to account for potential delays in automation.
 
 ### GregTech Features
 

@@ -50,8 +50,13 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
 
     @Unique private SingleStackHandlerUpgrades gcu_upgrades;
     @Unique private NBTSerializable.NBTBoolean gcu_limit_to_one;
+    @Unique private NBTSerializable.NBTBoolean gcu_strict_slots;
+    @Unique private NBTSerializable.Int gcu_strict_mask;
+    
     @Unique private int gcu_accumulator = 0;
     @Unique private int gcu_lastSlotSidesHash = 0;
+    @Unique private boolean gcu_last_strict_state = false;
+    @Unique private IRecipe gcu_lastRecipe = null;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void gcu$onInit(CallbackInfo ci) {
@@ -63,6 +68,8 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
             }
         };
         this.gcu_limit_to_one = this.registerNBT("limit_to_one", new NBTSerializable.NBTBoolean(false));
+        this.gcu_strict_slots = this.registerNBT("strict_slots", new NBTSerializable.NBTBoolean(false));
+        this.gcu_strict_mask = this.registerNBT("strict_mask", new NBTSerializable.Int(0));
     }
 
     @Override
@@ -80,6 +87,10 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
         if (this.gcu_upgrades != null && compound.hasKey("gcu_upgrades_data")) {
             this.gcu_upgrades.deserializeNBT(compound.getCompoundTag("gcu_upgrades_data"));
         }
+        // Prevents the strict mask from accidentally resetting when loading chunks
+        if (this.gcu_strict_slots != null) {
+            this.gcu_last_strict_state = this.gcu_strict_slots.value;
+        }
     }
 
     @Override
@@ -88,14 +99,13 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
     }
 
     @Override
-    public SingleStackHandlerUpgrades gcu_getUpgrades() {
-        return this.gcu_upgrades;
-    }
+    public SingleStackHandlerUpgrades gcu_getUpgrades() { return this.gcu_upgrades; }
+    
+    @Override
+    public NBTSerializable.NBTBoolean gcu_getLimitToOne() { return this.gcu_limit_to_one; }
 
     @Override
-    public NBTSerializable.NBTBoolean gcu_getLimitToOne() {
-        return this.gcu_limit_to_one;
-    }
+    public NBTSerializable.NBTBoolean gcu_getStrictSlots() { return this.gcu_strict_slots; }
 
     @Inject(method = "getPower", at = @At("HEAD"), cancellable = true)
     public void gcu$getPower(CallbackInfoReturnable<Float> cir) {
@@ -134,6 +144,20 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
             this.extraStacks.attemptDump(this.output);
         }
 
+        // --- SNAPSHOT LOGIC ---
+        // If the player JUST toggled the "Strict Slots" button ON, take a snapshot of occupied slots
+        if (this.gcu_strict_slots.value && !this.gcu_last_strict_state) {
+            int mask = 0;
+            for (int i = 0; i < 9; i++) {
+                if (StackHelper.isNonNull(this.contents.getStackInSlot(i))) {
+                    mask |= (1 << i);
+                }
+            }
+            this.gcu_strict_mask.value = mask;
+            this.markDirty();
+        }
+        this.gcu_last_strict_state = this.gcu_strict_slots.value;
+
         int speed = 1 + this.gcu_upgrades.getLevel(Upgrade.SPEED);
         this.gcu_accumulator += speed;
 
@@ -151,10 +175,33 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
     @Unique
     private boolean gcu$performCraftingStep() {
         IRecipe recipe = this.getRecipe();
+        
+        // --- RECIPE CHANGE BUG FIX ---
+        // If the recipe changes mid-craft, instantly reset progress to safely recalculate
+        if (recipe != this.gcu_lastRecipe) {
+            this.progress.value = 0;
+            this.max_progress.value = 0;
+            this.gcu_lastRecipe = recipe;
+        }
+
         if (recipe == NullRecipe.INSTANCE) {
             this.progress.value = 0;
             this.max_progress.value = -1;
             return false;
+        }
+        
+        // --- STRICT SLOTS LOGIC ---
+        if (this.gcu_strict_slots.value) {
+            for (int i = 0; i < 9; i++) {
+                if ((this.gcu_strict_mask.value & (1 << i)) != 0) {
+                    if (StackHelper.isNull(this.contents.getStackInSlot(i))) {
+                        // A slot that was snapped as "required" is empty. Halt crafting!
+                        this.progress.value = 0;
+                        this.max_progress.value = 0;
+                        return false;
+                    }
+                }
+            }
         }
 
         this.crafter.loadStacks(this.contents);
@@ -234,6 +281,7 @@ public abstract class MixinTileAnalogCrafter extends TilePower implements IAnalo
 
                 if (StackHelper.isNonNull(remainStack)) {
                     ItemStack currentInSlot = this.contents.getStackInSlot(i);
+                    
                     if (StackHelper.isNull(currentInSlot)) {
                         this.contents.setStackInSlot(i, remainStack);
                     } else {
