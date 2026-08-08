@@ -78,11 +78,20 @@ public class TileEntityCapabilityProxy extends TileEntity {
 
     @Override
     public void readFromNBT(NBTTagCompound compound) {
+        boolean isLoaded = this.hasWorld() && !this.world.isRemote;
+        if (isLoaded) {
+            ProxyRegistry.unregister(this);
+        }
+
         super.readFromNBT(compound);
         itemIn = compound.getBoolean("HasItemIn") ? BlockPos.fromLong(compound.getLong("ItemIn")) : null;
         fluidIn = compound.getBoolean("HasFluidIn") ? BlockPos.fromLong(compound.getLong("FluidIn")) : null;
         itemOut = compound.getBoolean("HasItemOut") ? BlockPos.fromLong(compound.getLong("ItemOut")) : null;
         fluidOut = compound.getBoolean("HasFluidOut") ? BlockPos.fromLong(compound.getLong("FluidOut")) : null;
+
+        if (isLoaded) {
+            ProxyRegistry.register(this);
+        }
     }
 
     @Override

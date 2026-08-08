@@ -29,81 +29,50 @@ public abstract class MixinMetaTileEntityProxyInterop {
     @Shadow(remap = false) public abstract BlockPos getPos();
     @Shadow(remap = false) public abstract <T> T getCoverCapability(Capability<T> capability, EnumFacing side);
     @Shadow(remap = false) protected static void moveInventoryItems(IItemHandler sourceInventory, IItemHandler targetInventory) { }
-    
-    // Shadow Nomifactory's Notifiable Lists so we can access them
-    @Shadow(remap = false) protected List<net.minecraftforge.items.IItemHandlerModifiable> notifiedItemOutputList;
-    @Shadow(remap = false) protected List<IFluidHandler> notifiedFluidOutputList;
 
     @Inject(method = "update", at = @At("TAIL"), remap = false)
     private void interceptUpdateForProxies(CallbackInfo ci) {
         World world = getWorld();
         if (world == null || world.isRemote) return;
 
-        // 1. TPS Optimization: If this machine is asleep (no notifications), do absolutely nothing!
-        if (this.notifiedItemOutputList.isEmpty() && this.notifiedFluidOutputList.isEmpty()) {
-            return;
-        }
-
         int dim = world.provider.getDimension();
         BlockPos pos = getPos();
-        
-        // Check if this is a Hatch/Bus rather than a Main Controller
-        boolean isHatch = this instanceof gregtech.api.metatileentity.multiblock.IMultiblockPart;
 
-        // 2. Process Item Proxies
-        if (!this.notifiedItemOutputList.isEmpty()) {
-            List<TileEntityCapabilityProxy> itemProxies = ProxyRegistry.getItemOutProxies(dim, pos);
+        // 1. Process Item Proxies
+        // We do a direct O(1) hash lookup. This completely bypasses the bug in Nomifactory's Item Buses.
+        List<TileEntityCapabilityProxy> itemProxies = ProxyRegistry.getItemOutProxies(dim, pos);
+        if (itemProxies != null && !itemProxies.isEmpty()) {
             IItemHandler myItemHandler = getCoverCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-            
-            if (itemProxies != null && !itemProxies.isEmpty() && myItemHandler != null) {
-                for (TileEntityCapabilityProxy proxy : itemProxies) {
-                    for (EnumFacing proxyFacing : EnumFacing.VALUES) {
-                        TileEntity adjacentToProxy = world.getTileEntity(proxy.getPos().offset(proxyFacing));
-                        if (adjacentToProxy == null || adjacentToProxy instanceof TileEntityCapabilityProxy) continue;
-
-                        IItemHandler targetHandler = adjacentToProxy.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, proxyFacing.getOpposite());
-                        if (targetHandler != null) {
-                            moveInventoryItems(myItemHandler, targetHandler); // Push directly into ME Interface
-                        }
-                    }
-                }
-            }
-            
-            // Deadlock Prevention & Sleep Logic
-            // We only clear the hatch's notification list if the proxy successfully emptied it.
-            // If the AE2 Interface is full, the list is NOT cleared, causing it to retry next tick.
-            if (isHatch && myItemHandler != null) {
+            if (myItemHandler != null) {
+                // Fast check to ensure we actually have items before querying ME interface capabilities
                 boolean hasItems = false;
                 for (int i = 0; i < myItemHandler.getSlots(); i++) {
                     if (!myItemHandler.getStackInSlot(i).isEmpty()) {
                         hasItems = true; break;
                     }
                 }
-                if (!hasItems) this.notifiedItemOutputList.clear();
-            }
-        }
+                if (hasItems) {
+                    for (TileEntityCapabilityProxy proxy : itemProxies) {
+                        if (proxy.isInvalid()) continue; // Safety check for Carry On / block breaking
+                        for (EnumFacing proxyFacing : EnumFacing.VALUES) {
+                            TileEntity adjacentToProxy = world.getTileEntity(proxy.getPos().offset(proxyFacing));
+                            if (adjacentToProxy == null || adjacentToProxy instanceof TileEntityCapabilityProxy) continue;
 
-        // 3. Process Fluid Proxies
-        if (!this.notifiedFluidOutputList.isEmpty()) {
-            List<TileEntityCapabilityProxy> fluidProxies = ProxyRegistry.getFluidOutProxies(dim, pos);
-            IFluidHandler myFluidHandler = getCoverCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, null);
-            
-            if (fluidProxies != null && !fluidProxies.isEmpty() && myFluidHandler != null) {
-                for (TileEntityCapabilityProxy proxy : fluidProxies) {
-                    for (EnumFacing proxyFacing : EnumFacing.VALUES) {
-                        TileEntity adjacentToProxy = world.getTileEntity(proxy.getPos().offset(proxyFacing));
-                        if (adjacentToProxy == null || adjacentToProxy instanceof TileEntityCapabilityProxy) continue;
-
-                        IFluidHandler targetHandler = adjacentToProxy.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, proxyFacing.getOpposite());
-                        if (targetHandler != null) {
-                            gregtech.api.util.GTFluidUtils.transferFluids(myFluidHandler, targetHandler, Integer.MAX_VALUE);
+                            IItemHandler targetHandler = adjacentToProxy.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, proxyFacing.getOpposite());
+                            if (targetHandler != null) {
+                                moveInventoryItems(myItemHandler, targetHandler);
+                            }
                         }
                     }
                 }
             }
-            
-            // Deadlock Prevention & Sleep Logic
-            if (isHatch && myFluidHandler != null) {
+        }
+
+        // 2. Process Fluid Proxies
+        List<TileEntityCapabilityProxy> fluidProxies = ProxyRegistry.getFluidOutProxies(dim, pos);
+        if (fluidProxies != null && !fluidProxies.isEmpty()) {
+            IFluidHandler myFluidHandler = getCoverCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, null);
+            if (myFluidHandler != null) {
                 boolean hasFluids = false;
                 for (IFluidTankProperties prop : myFluidHandler.getTankProperties()) {
                     FluidStack fs = prop.getContents();
@@ -111,7 +80,20 @@ public abstract class MixinMetaTileEntityProxyInterop {
                         hasFluids = true; break;
                     }
                 }
-                if (!hasFluids) this.notifiedFluidOutputList.clear();
+                if (hasFluids) {
+                    for (TileEntityCapabilityProxy proxy : fluidProxies) {
+                        if (proxy.isInvalid()) continue; // Safety check for Carry On / block breaking
+                        for (EnumFacing proxyFacing : EnumFacing.VALUES) {
+                            TileEntity adjacentToProxy = world.getTileEntity(proxy.getPos().offset(proxyFacing));
+                            if (adjacentToProxy == null || adjacentToProxy instanceof TileEntityCapabilityProxy) continue;
+
+                            IFluidHandler targetHandler = adjacentToProxy.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, proxyFacing.getOpposite());
+                            if (targetHandler != null) {
+                                gregtech.api.util.GTFluidUtils.transferFluids(myFluidHandler, targetHandler, Integer.MAX_VALUE);
+                            }
+                        }
+                    }
+                }
             }
         }
     }

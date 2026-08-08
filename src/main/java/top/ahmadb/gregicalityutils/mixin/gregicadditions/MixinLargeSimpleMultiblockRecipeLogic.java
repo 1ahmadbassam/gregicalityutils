@@ -45,7 +45,7 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
     protected void trySearchNewRecipeCombined() {
         long maxVoltage = getMaxVoltage();
         if (metaTileEntity instanceof LargeSimpleRecipeMapMultiblockController) {
-            maxVoltage = ((LargeSimpleRecipeMapMultiblockController) metaTileEntity).maxVoltage;
+            maxVoltage = Math.min(maxVoltage, ((LargeSimpleRecipeMapMultiblockController) metaTileEntity).maxVoltage);;
         }
         
         IItemHandlerModifiable importInventory = getInputInventory();

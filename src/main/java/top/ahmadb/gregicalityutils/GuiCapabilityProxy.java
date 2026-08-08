@@ -4,6 +4,8 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.util.math.BlockPos;
+import org.lwjgl.input.Keyboard;
+
 import java.io.IOException;
 
 public class GuiCapabilityProxy extends GuiScreen {
@@ -68,6 +70,15 @@ public class GuiCapabilityProxy extends GuiScreen {
         fillPos(te.fluidOut, fluidOutX, fluidOutY, fluidOutZ);
 
         buttonList.add(new GuiButton(0, cx - 50, cy + 55, 100, 20, "Save & Close"));
+
+        // Copy and Paste buttons per row
+        int[] rows = {row1, row2, row3, row4};
+        for (int i = 0; i < 4; i++) {
+            // Copy buttons (IDs 1, 3, 5, 7)
+            buttonList.add(new GuiButton(i * 2 + 1, zPos + 45, rows[i], 20, boxHeight, "C"));
+            // Paste buttons (IDs 2, 4, 6, 8)
+            buttonList.add(new GuiButton(i * 2 + 2, zPos + 67, rows[i], 20, boxHeight, "P"));
+        }
     }
 
     @Override
@@ -100,6 +111,25 @@ public class GuiCapabilityProxy extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        // Tab Shift implementation
+        if (keyCode == Keyboard.KEY_TAB) {
+            boolean shiftPressed = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+            for (int i = 0; i < allFields.length; i++) {
+                if (allFields[i].isFocused()) {
+                    allFields[i].setFocused(false);
+                    // Determine next field (handle reverse for Shift + Tab)
+                    int next = shiftPressed ? (i - 1 + allFields.length) % allFields.length : (i + 1) % allFields.length;
+                    allFields[next].setFocused(true);
+                    return;
+                }
+            }
+            // If nothing is focused, focus the first one
+            if (allFields.length > 0) {
+                allFields[0].setFocused(true);
+            }
+            return;
+        }
+
         for (GuiTextField field : allFields) {
             // Only capture the event if a text box is focused, preventing 'E' from instantly closing the GUI
             if (field.textboxKeyTyped(typedChar, keyCode)) {
@@ -128,6 +158,41 @@ public class GuiCapabilityProxy extends GuiScreen {
                 parsePos(fluidOutX, fluidOutY, fluidOutZ)
             ));
             mc.displayGuiScreen(null);
+        } 
+        // Handle Copy / Paste buttons (IDs 1 through 8)
+        else if (button.id >= 1 && button.id <= 8) {
+            int rowIndex = (button.id - 1) / 2;
+            boolean isPaste = (button.id - 1) % 2 == 1; // Even ids (2, 4, 6, 8) are pastes
+            
+            if (isPaste) {
+                pasteRow(rowIndex);
+            } else {
+                copyRow(rowIndex);
+            }
+        }
+    }
+
+    private void copyRow(int rowIndex) {
+        GuiTextField x = allFields[rowIndex * 3];
+        GuiTextField y = allFields[rowIndex * 3 + 1];
+        GuiTextField z = allFields[rowIndex * 3 + 2];
+        
+        String txt = x.getText().trim() + "," + y.getText().trim() + "," + z.getText().trim();
+        setClipboardString(txt);
+    }
+
+    private void pasteRow(int rowIndex) {
+        String clipboardData = getClipboardString();
+        if (clipboardData != null && !clipboardData.isEmpty()) {
+            String[] parts = clipboardData.split(",");
+            
+            GuiTextField x = allFields[rowIndex * 3];
+            GuiTextField y = allFields[rowIndex * 3 + 1];
+            GuiTextField z = allFields[rowIndex * 3 + 2];
+            
+            if (parts.length > 0) x.setText(parts[0].trim());
+            if (parts.length > 1) y.setText(parts[1].trim());
+            if (parts.length > 2) z.setText(parts[2].trim());
         }
     }
 

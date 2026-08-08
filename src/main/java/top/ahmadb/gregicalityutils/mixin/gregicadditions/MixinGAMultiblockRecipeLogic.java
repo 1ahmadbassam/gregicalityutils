@@ -87,6 +87,9 @@ public abstract class MixinGAMultiblockRecipeLogic extends MultiblockRecipeLogic
     @Overwrite(remap = false)
     private void trySearchNewRecipeDistinct() {
         long maxVoltage = getMaxVoltage();
+        if (metaTileEntity instanceof gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController) {
+            maxVoltage = Math.min(maxVoltage, ((gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController) metaTileEntity).maxVoltage);
+        }
         Recipe currentRecipe = null;
         List<IItemHandlerModifiable> importInventory = getInputBuses();
         IMultipleTankHandler importFluids = getInputTank();
