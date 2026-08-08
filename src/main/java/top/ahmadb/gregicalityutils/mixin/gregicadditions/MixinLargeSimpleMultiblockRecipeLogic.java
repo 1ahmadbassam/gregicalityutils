@@ -12,6 +12,8 @@ import gregtech.api.util.InventoryUtils;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -181,7 +183,17 @@ public abstract class MixinLargeSimpleMultiblockRecipeLogic extends GAMultiblock
 
         return newRecipe.build().getResult();
     }
-   
+    
+    /**
+     * @author ahmadb
+     * @reason Prevent setupRecipe from ignoring the hatch voltage limits and forcing an overclock based solely on the motor.
+     */
+    @Redirect(method = "setupRecipe", at = @At(value = "FIELD", target = "Lgregicadditions/machines/multi/simple/LargeSimpleRecipeMapMultiblockController;maxVoltage:J"), remap = false)
+    private long gu$clampMaxVoltageInSetup(gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController instance) {
+        return Math.min(this.getMaxVoltage(), instance.maxVoltage);
+    }
+
+       
     /**
      * @author ahmadb
      * @reason Prevent circuits from bottlenecking the parallelization multiplier.

@@ -38,6 +38,19 @@ public abstract class MixinGAMultiblockRecipeLogic extends MultiblockRecipeLogic
         metaTileEntity.getNotifiedFluidInputList().clear();
         return isDirty;
     }
+    
+    /**
+     * @author ahmadb
+     * @reason Globally clamp the multiblock's max voltage to whichever is lowest: the hatches or the motor/piston.
+     */
+    @Override
+    public long getMaxVoltage() {
+        long hatchVoltage = super.getMaxVoltage();
+        if (metaTileEntity instanceof gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController) {
+            return Math.min(hatchVoltage, ((gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController) metaTileEntity).maxVoltage);
+        }
+        return hatchVoltage;
+    }
 
     /**
      * @author ahmadb
