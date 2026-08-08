@@ -51,6 +51,8 @@
     "ocxnetdriver.MixinEnvironmentXnetController",
     "ocxnetdriver.MixinEnvironmentXnetControllerOptimizeItems"
   ],
-  "client": [],
+  "client": [
+    "gregicadditions.MixinDownloadThread"
+  ],
   "server": []
 }

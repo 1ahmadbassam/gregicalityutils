@@ -82,6 +82,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
   * Fix running blast furnaces + large multiblocks breaking on world reload (NullPointerException).
   * Fix large multiblocks overclocking to the casing level, rather than the minimum of both voltage and casing level.
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
+  * Fix central monitor online pic plugin failing to interpret HTTP 304 status, breaking on world reload.
 
 ## Legal & Credits
 
