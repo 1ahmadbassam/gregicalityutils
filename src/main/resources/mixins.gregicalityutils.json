@@ -36,6 +36,7 @@
     "gregtech.MixinAbstractRecipeLogic",
     "gregtech.MixinMetaTileEntityMacerator",
     "gregtech.MixinMetaTileEntityProxyInterop",
+    "gregtech.MixinFluidTankList",
     "gtce2oc.MixinMachineObject",
     "gtce2oc.MixinTileEntityGTCEBridge",
     "extrautils2.MixinTileMine",
