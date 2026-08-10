@@ -77,6 +77,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Allow rock breakers to check for their required fluids from the bottom and top, not just the three non-front facing side.
 * Rock breakers can now generate dirt and coarse dirt if placed near water and witchwater at the same rate as stones.
 * Allow armor suites to be worn in Bauble slots. I only meant to add this for the nightvision goggles, battery pack, and jetpacks, but apparently it worked for everything. Don't abuse it.
+* Improve large chemical reactor energy bonus with higher tier coils rather than the bracketed logic.
 * Bug fixes:
   * Add the missing overclock button to electric sieves. Also expand the internal sieve inventory for all sieves to 54 slots to successfully run recipes that require 54 distinct item entires (I'm looking at you dirt). Known bug: the GUI is still 24 slots and no I don't intend to fix this. It works correctly with automation (i.e. pipes or conduits) and the lower 30 slots are only used if the first 24 slots are full.
   * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended. Furthermore, disable recipe caching for large multiblocks to ensure maximum parallelism when running recipes.
@@ -84,6 +85,7 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
   * Fix large multiblocks overclocking to the casing level, rather than the minimum of both voltage and casing level.
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
   * Fix central monitor online pic plugin failing to interpret HTTP 304 status, breaking on world reload.
+  * Fix broken large thermal centrifuge coil logic.
 
 ## Legal & Credits
 

@@ -1,0 +1,8 @@
+gtadditions.multiblock.large_chemical_reactor.tooltip.1=This multiblock perfectly overclocks, meaning that for each tier, the energy usage per recipe remains the same.
+gtadditions.multiblock.large_chemical_reactor.tooltip.2=The coil also reduces the EU/t for each recipe by a certain amount, depending on the tier.
+gtadditions.multiblock.large_chemical_reactor.tooltip.3=Each coil tier above Cupronickel provides an
+gtadditions.multiblock.large_chemical_reactor.tooltip.4=additional §c5%%§7 reduction in EU/t.
+gtadditions.multiblock.large_chemical_reactor.tooltip.5=(Maximum reduction is capped at §c95%%§7).
+material.dark_steel=Dark Steel
+material.end_steel=End Steel
+material.stellar_alloy=Stellar Alloy
