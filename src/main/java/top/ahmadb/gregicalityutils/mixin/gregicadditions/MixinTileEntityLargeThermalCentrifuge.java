@@ -1,5 +1,6 @@
 package top.ahmadb.gregicalityutils.mixin.gregicadditions;
 
+import gregicadditions.item.components.MotorCasing;
 import gregicadditions.machines.multi.simple.TileEntityLargeThermalCentrifuge;
 import gregtech.api.multiblock.PatternMatchContext;
 import gregtech.common.blocks.BlockWireCoil;
@@ -9,10 +10,11 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(value = TileEntityLargeThermalCentrifuge.class, remap = false)
-public abstract class MixinTileEntityLargeThermalCentrifuge extends gregicadditions.capabilities.impl.GARecipeMapMultiblockController {
+public abstract class MixinTileEntityLargeThermalCentrifuge extends gregicadditions.machines.multi.simple.LargeSimpleRecipeMapMultiblockController {
 
+    // Dummy constructor matching the superclass
     public MixinTileEntityLargeThermalCentrifuge(ResourceLocation metaTileEntityId) {
-        super(metaTileEntityId, null, false, false, false);
+        super(metaTileEntityId, null, 0, 0, 0, 0);
     }
 
     @Shadow(remap = false)
@@ -20,12 +22,16 @@ public abstract class MixinTileEntityLargeThermalCentrifuge extends gregicadditi
 
     /**
      * @author ahmadb
-     * @reason Fix the NBT string key mismatch ("reactorCoilTemperature" -> "blastFurnaceTemperature") 
-     * and apply continuous 5% scaling per coil tier.
+     * @reason Fix the NBT string key mismatch ("reactorCoilTemperature" -> "blastFurnaceTemperature"), 
+     * apply continuous 5% scaling per coil tier, and RESTORE the maxVoltage motor calculation.
      */
     @Overwrite(remap = false)
     protected void formStructure(PatternMatchContext context) {
         super.formStructure(context);
+        
+        MotorCasing.CasingType motor = context.getOrDefault("Motor", MotorCasing.CasingType.MOTOR_LV);
+        int min = motor.getTier();
+        this.maxVoltage = (long) (Math.pow(4, min) * 8);
         
         // Grab the correct key saved by the predicate
         int temperature = context.getOrDefault("blastFurnaceTemperature", 0);
@@ -37,6 +43,8 @@ public abstract class MixinTileEntityLargeThermalCentrifuge extends gregicadditi
                 break;
             }
         }
+        
+        // Fallback for custom coils added by other mods
         if (tier == 0 && temperature > 1800) {
             tier = Math.max(0, (temperature - 1800) / 900);
         }

@@ -29,7 +29,7 @@ public abstract class MixinLargeThermalCentrifugeWorkableHandler extends gregica
         this.progressTime = 1;
 
         TileEntityLargeThermalCentrifuge metaTileEntity = (TileEntityLargeThermalCentrifuge) getMetaTileEntity();
-        int speedBonus = metaTileEntity.getSpeedBonus();
+        int speedBonus = ((TileEntityLargeThermalCentrifugeAccessor) metaTileEntity).gu$getSpeedBonus();
 
         // FIX: Subtract a percentage of the DURATION (resultOverclock[1]), not EU/t (resultOverclock[0])
         resultOverclock[1] -= (int) (resultOverclock[1] * speedBonus * 0.01f);
