@@ -164,6 +164,8 @@ dependencies {
     implementation rfg.deobf("curse.maven:ctm-267602:2915363")
     implementation rfg.deobf("curse.maven:codechickenlib-242818:2779848")
     implementation rfg.deobf("curse.maven:baubles-227083:2518667")
+    implementation rfg.deobf("curse.maven:ae2-uel-570458:6302098")
+    implementation rfg.deobf("curse.maven:mousetweaks-60089:3359843")
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'

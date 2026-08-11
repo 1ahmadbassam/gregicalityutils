@@ -31,6 +31,8 @@
     "gregicadditions.MixinTileEntityLargeThermalCentrifuge",
     "gregicadditions.MixinLargeThermalCentrifugeWorkableHandler",
     "gregicadditions.TileEntityLargeThermalCentrifugeAccessor",
+    "gregicadditions.MixinTileEntityChemicalPlant",
+    "gregicadditions.MixinAbstractRecipeLogic",
     "gregtech.IArmorMetaItemAccessor",
     "gregtech.MixinItemSourceList",
     "gregtech.MixinMetaTileEntityWorkbench",
