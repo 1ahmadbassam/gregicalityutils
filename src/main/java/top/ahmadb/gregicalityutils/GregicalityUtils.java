@@ -46,9 +46,13 @@ public class GregicalityUtils {
         // Register the Capability Proxy packet on ID 1
         NETWORK.registerMessage(PacketUpdateCapabilityProxy.Handler.class, PacketUpdateCapabilityProxy.class, 1, Side.SERVER);
 
+        // Register the Smart Blocking packet on ID 2
+        NETWORK.registerMessage(PacketToggleSmartBlocking.Handler.class, PacketToggleSmartBlocking.class, 2, Side.SERVER);
+
         // ONLY initialize client-side features like keybinds if we are on the physical client
         if (event.getSide() == Side.CLIENT) {
             top.ahmadb.gregicalityutils.client.RingToggleKeybind.init();
+            top.ahmadb.gregicalityutils.client.SmartBlockingKeybind.init();
         }
     }
 

@@ -65,7 +65,6 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 
 * Optimizes the conveyor cover.
 * Backport [ULV recipe overclocking bug](https://github.com/Nomifactory/GregTech/commit/99d9bc954a0357ded01bdf7e42e2ffb36c4bcf68) and [Fix macerators giving wrong number of overclock bonuses](https://github.com/Nomifactory/GregTech/commit/e88c58bb8b2c833a2d480884163e4d703a04baae) while retaining existing method signatures.
-* Ignore fluid type restrictions if AE2 is the one interfacing with a multi fluid hatch. Note: this is behavior breaking for general purpose usage; the whole point is to let ME interfaces access the whole hatch but I don't wanna bother with AE2 code. Note 2: Subject for review as might affect tick time.
 * Workbench changes:
   * Optimize the thing to not tick at all while not open (seriously who designed this).
   * If an item is taken from a storage, it is returned to the same storage (relevant when interacting with the storage tab).

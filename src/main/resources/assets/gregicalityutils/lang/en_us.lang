@@ -2,3 +2,4 @@ tile.gregicalityutils.analog_emitter.name=Analog Emitter
 tile.gregicalityutils.twerk_simulator.name=Twerk Simulator
 tile.gregicalityutils.sheep_stimulator.name=Sheep Stimulator
 tile.gregicalityutils.capability_proxy.name=Capability I/O Proxy
+key.smartblock.toggle=AE2 Smartblock Toggle

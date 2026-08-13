@@ -1,6 +1,6 @@
 package top.ahmadb.gregicalityutils.mixin.gregicadditions;
 
-import gregicadditions.machines.multi.override.MetaTileEntityElectricBlastFurnace;
+import gregicadditions.machines.multi.nuclear.MetaTileEntityNuclearReactor;
 import gregtech.api.recipes.Recipe;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(value = MetaTileEntityElectricBlastFurnace.class, remap = false)
-public class MixinMetaTileEntityElectricBlastFurnace {
+@Mixin(value = MetaTileEntityNuclearReactor.class, remap = false)
+public class MixinMetaTileEntityNuclearReactor {
 
     /**
      * @author ahmadb
@@ -23,14 +23,15 @@ public class MixinMetaTileEntityElectricBlastFurnace {
             cir.setReturnValue(true);
         }
     }
-
+    
     /**
      * @author ahmadb
-     * @reason Removes the minimum Heat Proof Machine Casing requirement so more fluid/item hatches can be added.
+     * @reason Flips the 'isDistinct' boolean passed to the super constructor from false to true.
      */
-    @ModifyConstant(method = "createStructurePattern", constant = @Constant(intValue = 8))
-    private int gu$removeMinimumCasingRequirement(int originalCasingAmount) {
-        // Change the minimum casing requirement ('L', 8) from 8 to 0
-        return 0;
+    @ModifyConstant(method = "<init>", constant = @Constant(intValue = 0, ordinal = 0))
+    private int gu$enableDistinctBuses(int original) {
+        // In Java bytecode, 0 represents 'false' and 1 represents 'true'.
+        // We return 1 to silently change super(..., false, ...) into super(..., true, ...)
+        return 1; 
     }
 }
