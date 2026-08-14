@@ -12,7 +12,7 @@ No JAR. Build it yourself. Simply run `gradlew build` with JDK 25 on your PATH, 
 
 ## What This Does
 
-Required Dependencies: Gregtech: Nomifactory Edition 1.18.3, Gregicality (Obviously), OpenComputers, GTCE2OC, XNet, OCXNetDriver, ProgressiveAutomation, Extra Utilities 2, and their respective libraries.
+Required Dependencies: Gregtech: Nomifactory Edition 1.18.3, Gregicality (Obviously), AE2-UEL, OpenComputers, GTCE2OC, XNet, OCXNetDriver, ProgressiveAutomation, Extra Utilities 2, and their respective libraries.
 
 Optional Dependencies: Baubles.
 
@@ -22,6 +22,11 @@ Optional Dependencies: Baubles.
 * Twerk Simulator, which is a block version of Twerk-Sim 2K16 but also works with sugarcane, cactus, nether wart, mushroom (to mushroom trees), and even ender lilies from Extra Utilities 2. Can be considered "cheaty" as it basically breaks farming but I don't care or want to focus on food or farming honestly.
 * Sheep Stimulator, which forces sheep to eat grass every second to regen their wool. Best used with grass seeds.
 * Capability Proxy: a mid-game block that allows you to combine item-in, fluid-in, item-out, and fluid-out capabilities into one block; compatible with Gregtech auto push and output multiblock parts. Very useful for AE2 interfaces and multiblocks. Note: this block can be abused easily, but I do not know how to make it less abuse-worthy.
+
+### AE2-UEL Features
+
+* Experimental port of GTNH's "Smart Blocking" feature to interfaces to allow pushing recipe of same type. Configure using keybind (not assigned by default) by looking at an interface in-world and pressing the keybind.
+* Subnet blocking also checks for fluids in the subnet.
 
 ### ProgressiveAutomation Features
 
@@ -79,14 +84,16 @@ Lists all non-empty items in a given inventory using a memory-efficient sparse f
 * Improve large chemical reactor energy bonus with higher tier coils rather than the bracketed logic.
 * Add coil bonus for chemical plant.
 * Allow order-independent recipes in the assembly line.
+* Disable blast furnace minimum casing requirement.
 * Bug fixes:
   * Add the missing overclock button to electric sieves. Also expand the internal sieve inventory for all sieves to 54 slots to successfully run recipes that require 54 distinct item entires (I'm looking at you dirt). Known bug: the GUI is still 24 slots and no I don't intend to fix this. It works correctly with automation (i.e. pipes or conduits) and the lower 30 slots are only used if the first 24 slots are full.
   * Rewrite large multiblock recipe logic completely since the old logic was not working reliably. Apparently it was counting programmed circuits as consumable items or something. Now they work as intended. Furthermore, disable recipe caching for large multiblocks to ensure maximum parallelism when running recipes.
-  * Fix running blast furnaces + large multiblocks breaking on world reload (NullPointerException).
+  * Fix running blast furnaces + large multiblocks + nuclear reactor breaking on world reload (NullPointerException).
   * Fix large multiblocks overclocking to the casing level, rather than the minimum of both voltage and casing level.
   * Fix Central Monitor & Screens not successfully reloading its configuration and caching stale data on world reload, causing it to freeze and require reconfiguration.
   * Fix central monitor online pic plugin failing to interpret HTTP 304 status, breaking on world reload.
   * Fix broken large thermal centrifuge coil logic.
+  * Fix large circuit assembly line crashing because it expects qbit recipes.
 
 ## Legal & Credits
 

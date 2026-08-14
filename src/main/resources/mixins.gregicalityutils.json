@@ -36,6 +36,7 @@
     "gregicadditions.MixinTileEntityChemicalPlant",
     "gregicadditions.MixinAbstractRecipeLogic",
     "gregicadditions.MixinMetaTileEntityNuclearReactor",
+    "gregicadditions.MixinQubitConsumeRecipeLogic",
     "gregtech.IArmorMetaItemAccessor",
     "gregtech.MixinItemSourceList",
     "gregtech.MixinMetaTileEntityWorkbench",
